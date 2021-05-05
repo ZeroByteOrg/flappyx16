@@ -1,0 +1,74 @@
+
+L C E  P R 
+1 1 0  0 0
+1 0 1  1 0
+0 1 1  0 1
+0 0 0  0 0
+
+P = E & L
+
+VLOAD [filename[,device[,bank,address]]]
+
+LOAD_ROUTINE:	
+	LDA	NAME_LENGTH
+	LDX	#<FILE_NAME
+	LDY	#>FILE_NAME
+	JSR	$FFBD	;SETNAM A=FILE NAME LENGTH X/Y=POINTER TO FILENAME
+	LDA	#$02
+	LDX	#$01	;DRIVE 1
+	LDY	#$00
+	JSR	$FFBA	;SETFLS A=LOGICAL NUMBER X=DEVICE NUMBER Y=SECONDARY
+	LDX	#<SCREEN_BUFFER
+	LDY	#>SCREEN_BUFFER
+	LDA	#$00
+	JSR	$FFD5	;LOAD FILE A=0 FOR LOAD X/Y=LOAD ADDRESS
+	RTS
+
+SETLFS. Set file parameters.
+Input: A = Logical number; X = Device number; Y = Secondary address.
+Output: –
+Used registers: –
+Real address: $FE00.
+
+SETNAM. Set file name parameters.
+Input: A = File name length; X/Y = Pointer to file name.
+Output: –
+Used registers: –
+Real address: $FDF9.
+
+$FFC0
+OPEN. Open file. (Must call SETLFS and SETNAM beforehands.)
+Input: –
+Output: –
+Used registers: A, X, Y.
+Real address: ($031A), $F34A.
+
+$FFCF
+CHRIN. Read byte from default input (for keyboard, read a line from the screen). (If not keyboard, must call OPEN and CHKIN beforehands.)
+Input: –
+Output: A = Byte read.
+Used registers: A, Y.
+Real address: ($0324), $F157.
+
+
+
+
+
+
+;Load a program into memory.
+LDA #$08  ; logical #
+LDX #$02  ; device #
+LDY #$00  ; secondary address
+JSR SETLFS
+LDA #$04     ; name length
+LDX #L,NAME  ; nameptr_lo
+LDY #H,NAME  ; nameptr_hi
+JSR SETNAM
+LDA #$00  ; 0=load, 1-255 = verify
+;no X     ; addr_lo (if secondary = 0)
+LDY #$20  ; addr_hi (if secondary = 0)
+JSR LOAD  
+RTS
+NAME .BY 'FILE'
+
+

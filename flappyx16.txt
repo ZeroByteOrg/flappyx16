@@ -1,0 +1,162 @@
+#include <stdint.h>
+#include <stdio.h>
+#include <conio.h>
+#include <6502.h>
+
+/*
+	Banners need 2 sprites @ 64x32
+        Bird ~ 32x32?
+	Scoreboard = 4 sprites @ 16x16
+	ReportCard = 4 sprites @ 64x64
+ 
+
+*/
+
+
+struct spr {
+  unit16_t   x, y, addr;
+  unit8_t    z, h, w, frame;
+  int8_t     dx, dy;
+  
+};
+
+
+// bird, 4 score digits, banner, 
+spr sprites[];
+
+
+int main() {
+  printf("
+}
+
+
+
+/*
+;Flappy Bird X16
+
+notes:
+- screen flash effect: disable the layers & sprite displays in VERA, then cycle
+  the BG color (palette entry zero) as the "flash"
+
+
+; use BASIC's area of ZeroPage for variables ($00-$8F)
+; if game exit supported, then do so by calling the system cold start vector at $FFFC
+;
+; $02 seems to hold the keyup/keydn events coming from the keyboard
+
+
+
+
+Frame ; byte to increment on every frame
+
+BirdX 
+BirdY
+BirdVX
+BirdVY
+BirdSprite
+BirdFrame
+
+TitleX
+TitleY
+TitleVY
+TitleSprite
+
+Score
+HiScore
+
+PipeHeight ; height of the pipe currently being drawn
+ScrollX
+ScrollDX
+DrawCOL    ; column of tilemap where the next col. of tiles is to be drawn
+
+flash-color ; color to write into the palette for screen flashes
+
+non-ZP variables:
+"ghost copies" of the sprite registers used
+
+
+
+
+init_system:
+
+initialize everything - load all sprites, tiles, bitmaps, etc into VRAM
+initialize YM2151 to all-zeros.
+
+load YM patches for SFX
+
+set screen resolution to 320x240
+
+load palette colors
+ $00-$0F : BG colors
+ $10-$1F : tile colors
+ $20-$2F : bird colors
+ $30-$3F : banner colors
+ $40-$4F : scoreboard colors
+ $50-$5F : reportcard
+
+set layer0:
+- bitmap mode 4bpp
+- bitmap data = "the city graphic" location in VRAM
+
+set layer1:
+- tile mode 4bpp 16x16 tile size, 64x32 map size
+- set tile base = $XXXX
+- set map base = $0000 (use the original screen memory area)
+
+
+
+initialize game objects:
+- bird
+- banner (Title, Get Ready, GameOVER)
+- scoreboard (4 sprites for the score digits)
+- info graphics (press fire to start, press fire to flap, more?)
+- reportcard (sprites with the score, hi score, medal, etc)
+
+Frame=0
+
+enable the VBLANK() interrupt routine
+
+init_game:
+- set all layer1 tiles to tile 0 attr=$10 (palette 1, no flip, no extended index)
+  (don't forget to put the ground in there)
+- set ScrollX = 0, ScrollDX= 3? , DrawCOL=41?
+- score=0
+- banner sprite = "Flappy Bird"
+- bannerY = ~100-ish?
+- hide scoreboard
+- hide reportcard
+- place "FlappyBird" banner at proper location
+- place the bird sprite at "title screen" location
+- set bird animation=normal rate
+- set birdSprite to 'level' (probably index 2 where 0=up, 2=level, 4,6,8 = down
+
+titlescreen:
+- frame++
+- update banner location
+- birdY = TitleY + ____
+- Frame % BirdAnimSpeed = 0 --> BirdFrame EOR $01
+- waitVBLANK()
+- getJOY ; pressed A? No=JMP titlescreen
+
+startGame:
+- banner X, Y
+- bannerDY=0
+- banner sprite -> "Get Ready"
+- BirdX, BirdY -> start position
+
+
+
+IRQ():
+if FrameReady {
+  copy ghost registers to VERA
+  call SFX generation routine
+  poll Joystick
+  FrameReady = FALSE
+}
+  
+/*
+
+i   srcbyte   <<
+0 -> 0|1   -> 4,0
+1 -> 2|3   -> 4,0
+2 -> 4|5   ->
