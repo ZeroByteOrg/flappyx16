@@ -40,6 +40,7 @@ void vload(const char* filename, const uint8_t bank, const uint16_t address)
 
 void init_game()
 {
+	// these are the patches for the YM SFX
 	#include "dingsound.inc" // will switch this to a load instead...
 	#include "fallsound.inc"
 	#include "flapsound.inc"
