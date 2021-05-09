@@ -5,18 +5,19 @@
 
 #define _bannerbytes	(64 * 64 / 2)
 
-#define MSG_TITLE		0
-#define MSG_GETREADY	1
-#define MSG_GAMEOVER	2
-
 typedef struct banner_t {
   uint16_t	addr;
+  uint8_t	spec;			// same as sprite reg7: hhwwpppp
+							// h=height w=width p=palette offset
   int16_t	x, y, target;
   int8_t	speed;
+  uint8_t	ntiles;
+  uint8_t	cols;			// number of sprite tiles per row
+  uint8_t	tile_h, tile_w; // derived from spec @ init
+  uint8_t	step;			// amt to add to SPR ADDR for each tile
 } banner_t;
 
-extern void init_banner(banner_t *banner, int16_t x, int16_t y, uint8_t msg);
-extern void banner_setmsg(banner_t *banner, uint8_t message);
+void init_banner(banner_t *banner, uint16_t addr, uint8_t tilespec, uint8_t layout);
 extern uint8_t *update_banner(banner_t *banner, uint8_t *spregs);
 
 #endif

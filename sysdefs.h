@@ -9,7 +9,7 @@
 #define __SYSDEFS_H__
 
 //#define R39
-#define debug
+//#define debug
 
 // Game Parameters
 #define _ceiling		-64
@@ -24,15 +24,23 @@
 #define _birdanimframes 3
 #define _birdrotatedelay 6
 
-#define _bannerx	(320/2 - (64*3/2))
-#define _hiscoreoffset	(64*3-16)
+#define _bannerx			(320/2 - (64*3/2))
+#define _bannery			4
+#define _hiscoreoffset		(64*3-16)
+#define _bannertitlespec	0xf2 // hhwwpppp
+#define _bannerreportspec	0xf2
+
+#define BANNER_1x3			0x13
+#define	BANNER_3x3			0x33
+
+#define BANNER_TITLE		SPRadr(_bannerbase)
+#define BANNER_GETREADY		SPRadr(_bannerbase + 3 * 64 * 64 / 2)
+#define BANNER_GAMEOVER		SPRadr(_bannerbase + 6 * 64 * 64 / 2)
 
 // VRAM layout
 #define _mapbase  	((unsigned long)0x04000)
 #define _spritebase ((unsigned long)0x08000)
-//#define _tilebase 	((unsigned long)0x10000)
 #define _tilebase 	((unsigned long)0x15000)
-//#define _bgbase   	((unsigned long)0x14000)
 #define _bgbase   	((unsigned long)0x16000)
 
 #define _birdbase		_spritebase
@@ -76,12 +84,16 @@
 								// calling the kernal
 
 // Macros to convert 17-bit VRAM addresses into 16-bit or 'bank #'
-#define VRAMlo(a)	(a & 0xffff)
-#define VRAMhi(a)	(a >> 16 & 0x01)
+#define VRAMlo(a)	((a) & 0xffff)
+#define VRAMhi(a)	((a) >> 16 & 0x01)
 
 // Macros to convert VRAM addresses into Hi/Low Addr bytes in SPR regs.
-#define SPRlo(a)	(a>>5  & 0xff)
-#define SPRhi(a)	(a>>13 & 0x0f)
+#define SPRlo(a)	((a)>>5  & 0xff)
+#define SPRhi(a)	((a)>>13 & 0x0f)
+#define SPRadr(a)	(SPRlo(a) | SPRhi(a) << 8)
+
+// Macros to calculate Sprite ADDR step from size in bytes
+#define SPRaddrstep(BYTES)	(((BYTES)>>5)&0xff)
 
 #endif
 

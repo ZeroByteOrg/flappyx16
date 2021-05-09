@@ -41,7 +41,8 @@ void ta()
 	printf("%c\n",*bar++);
 	printf("%c\n",*bar++);
 	printf("%c\n",*bar++);
-	
+	while (kbhit()) { cgetc(); }
+	while (! kbhit()) {}
 }
 
 void main()

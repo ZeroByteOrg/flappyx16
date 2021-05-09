@@ -17,7 +17,7 @@ uint8_t *update_scoreboard(const struct scoreboard_t *s, uint8_t *reg)
 	int8_t		i, xo;
 	uint8_t		digit;
 	uint16_t	show;
-	
+
 	int8_t		digitwidth = 12;
 
 	static const uint16_t ten[4] = { 1, 10, 100, 1000 };

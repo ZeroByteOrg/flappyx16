@@ -11,7 +11,7 @@ pkg			=	flappyx16.zip
 all: $(target) $(includes)
 
 FLAPPY.PRG: flappy.c $(includes)
-	cl65 -t cx16 -O -o $@ $(sources)
+	cl65 -t cx16 -O -Ln flappy.sym -o $@ $(sources)
 
 install:
 	cp FLAPPY.PRG ~/x16/

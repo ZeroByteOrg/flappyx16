@@ -221,41 +221,51 @@ void update_sound()
 
 void titlescreen(bird_t* bird)
 {
-
 	#define pogospeed 2
-	#define maxy 10
-	#define miny -2
+	#define maxy 16
+	#define miny -3
 	
-	#define BANNER_X (320/2 - (64*3/2) - 16)
-	#define BANNER_Y 4
 	#define BIRDXOFFSET 190
 	#define BIRDYOFFSET 21
 
 	banner_t banner;
-	
-//	scoreboard_t sa;
-//	scoreboard_t sb;
-//	scoreboard_t sc;
-	
-	uint8_t *spriteptr; // current sprite pointer
 
-	int16_t target[2] = { -3, 16 };
+	uint8_t *spriteptr; // current sprite pointer
+	#ifdef debug
+	scoreboard_t sa;
+	scoreboard_t sb;
+	#endif
+	
+	int16_t target[2] = { miny, maxy };
 	uint8_t	t = 0;
     uint8_t delay	= pogospeed;
     uint8_t noinput = 16; // ignore input for this many frames
 
-
+	spriteptr = &spriteregs[0][0];
 	clear_sprites();
 	init_pipes(&pipe);
-	init_bird(bird, BANNER_X+BIRDXOFFSET, BANNER_Y+BIRDYOFFSET);
-	init_banner(&banner,BANNER_X, BANNER_Y, MSG_TITLE);
+	init_bird(bird, _bannerx+BIRDXOFFSET, _bannery+BIRDYOFFSET);
+	init_banner(&banner,BANNER_TITLE,_bannertitlespec,BANNER_1x3);
+	printf("%s 0x%04x\n","n tiles     = ", banner.ntiles);
+	printf("%s 0x%04x\n","&banner     = ", &banner);
+	printf("%s 0x%04x\n","spriteptr   = ", spriteptr);
+	printf("%s 0x%04x\n","&spriteregs = ", &spriteregs);
+	banner.x = _bannerx;
+	banner.y = _bannery;
 	banner.speed = 1;
 	banner.target = target[t];
 	
-//	init_scoreboard(&sa, 160, 60, SB_center, SB_decimal);
-//	init_scoreboard(&sb, 160, 80, SB_left, SB_decimal);
-//	init_scoreboard(&sc, 160, 100, SB_right, SB_decimal);
-	
+	#ifdef debug
+	init_scoreboard(&sb,0,100,SB_left,SB_hex);
+// 	init_scoreboard(&sb,0,120,SB_left,SB_hex);
+
+//	sb.x		= 0;
+//	sb.y		= 120;
+//	sb.hex		= SB_hex;
+//	sb.center	= SB_left;
+//	sb.score	= 0;
+
+	#endif
 	ctrlstate.pressed	= 0;
 	ctrlstate.current	= 0;
 	ctrlstate.last		= 0xffff;
@@ -263,6 +273,12 @@ void titlescreen(bird_t* bird)
 	
 	while (!ctrlstate.pressed)
 	{
+		#ifdef debug
+//		sa.score = banner.addr;
+//		sb.score = banner.step;
+//		spriteptr = update_scoreboard(&sa,spriteptr);
+//		spriteptr = update_scoreboard(&sb,spriteptr);
+		#endif
 		if (delay) {
 			delay--;
 			banner.speed = 0;
@@ -274,16 +290,9 @@ void titlescreen(bird_t* bird)
 			if (banner.y == banner.target) {
 				t = ++t & 0x1;
 				banner.target = target[t];
-				
-//				sa.score++;
-//				sb.score++;
-//				sc.score++;
 			}
 		}
 		update_pipes(&pipe);
-//		spriteptr = update_scoreboard(&sa, spriteptr);
-//		spriteptr = update_scoreboard(&sb, spriteptr);
-//		spriteptr = update_scoreboard(&sc, spriteptr);
 		spriteptr = update_banner(&banner,spriteptr);
 		bird->y = banner.y + BIRDYOFFSET;
 		spriteptr = update_bird(bird,spriteptr);
@@ -310,7 +319,7 @@ uint16_t playgame(bird_t* bird)
 	uint16_t lastfloor;
 
 #ifdef debug
-	scoreboard_t dbout[3];
+	scoreboard_t dbout[5];
 	uint8_t d;
 #endif
 #ifdef testbird
@@ -320,15 +329,20 @@ uint16_t playgame(bird_t* bird)
 
 	// clear all sprites shadow regs
 	clear_sprites();
-	spriteptr = (uint8_t*)&spriteregs;
-	init_scoreboard(&score,320/2,4,SB_center,SB_decimal); 
+
+	spriteptr = &spriteregs[0][0];
+	init_scoreboard(&score,320/2,4,SB_center,SB_decimal);
 #ifdef debug
 	init_scoreboard(&dbout[0],0,10,SB_left,SB_hex); 
 	init_scoreboard(&dbout[1],0,30,SB_left,SB_hex); 
 	init_scoreboard(&dbout[2],0,50,SB_left,SB_hex); 
+	init_scoreboard(&dbout[3],0,70,SB_left,SB_hex); 
+	init_scoreboard(&dbout[4],0,90,SB_left,SB_hex); 
 #endif
 	init_bird(bird, _birdstartx, _birdstarty);
-	init_banner(&banner, _bannerx, 4, MSG_GETREADY);
+	init_banner(&banner,BANNER_GETREADY,_bannertitlespec,BANNER_1x3);
+	banner.x = _bannerx;
+	banner.y = _bannery;
 	banner.target = -64;
 	banner.speed  = 0;
 	lastfloor = _floor;
@@ -340,7 +354,9 @@ uint16_t playgame(bird_t* bird)
 		dbout[0].score = bird->y;
 		dbout[1].score = pipe.ceiling;
 		dbout[2].score = pipe.floor;
-		for (d=0 ; d<3 ; d++)
+		dbout[3].score = pipe.scroll >> 2;
+		dbout[4].score = ctrlstate.current;
+		for (d=0 ; d<5 ; d++)
 		{
 			spriteptr = update_scoreboard(&dbout[d], spriteptr);
 		}
@@ -381,7 +397,9 @@ uint16_t playgame(bird_t* bird)
 			// shake pipes and flash a red flash
 			// TODO: shake_pipes()
 			// TODO: flash_screen()
-			banner_setmsg(&banner, MSG_GAMEOVER);
+			init_banner(&banner,BANNER_GAMEOVER,_bannertitlespec,BANNER_1x3);
+			banner.x = _bannerx;
+			banner.y = -64;
 			banner.target = 4;
 			banner.speed = 3;
 			// skip fall sound if bird near ground
@@ -454,8 +472,10 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 	score.score   = p_score;
 	hiscore.score = p_hiscore;
 	
-	init_banner(&banner, _bannerx, 4, MSG_GAMEOVER);
-	banner.target = banner.x;
+	init_banner(&banner,BANNER_GAMEOVER,_bannertitlespec,BANNER_1x3);
+	banner.x = _bannerx;
+	banner.y = _bannery;
+	banner.target = banner.y;
 	banner.speed = 0;
 	
 	spriteptr = (uint8_t*)spriteregs;
@@ -464,10 +484,10 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 	ctrlstate.last     = 0xffff;
 	ctrlstate.current	= 0;
 	
-	while ((! ctrlstate.released) || frame < 60 )
+	while ((! ctrlstate.released) || f > 0 )
 //	while (1)
 	{
-		if (f < 60)
+		if (f > 0)
 			--f;
 		spriteptr = update_scoreboard(&score, spriteptr);
 		spriteptr = update_scoreboard(&hiscore, spriteptr);
@@ -483,13 +503,17 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 
 void endframe(uint8_t **spriteptr)
 {
-	uint8_t f = frame;
 	uint8_t* s = *spriteptr;
 
 	// flag the current sprite as first unused
 	s[6] = 0xfe;
+	frameready=1;
 	update_sound();
-	while (f == frame) {}
+	while (frameready) {}
+
+//	waitvsync();
+//	update_screen(pipe.scroll >> 2);
+
 	// reset sprite pointer to first sprite
 	*spriteptr = (uint8_t*)&spriteregs;
 	check_input();
@@ -497,13 +521,16 @@ void endframe(uint8_t **spriteptr)
 
 void irq(void)
 {
-	update_screen(pipe.scroll >> 2);
-	
-	// signal beginning of next frame to main program
-	frame++;
+	if (frameready)
+	{
+		update_screen(pipe.scroll >> 2);
+		// signal beginning of next frame to main program
+		frameready=0;
+	}
 	SETROMBANK = 0;	
 	asm("jmp (_SystemIRQ)");
 }
+
 
 static const uint8_t palette[96] =
 {
@@ -517,42 +544,6 @@ static const uint8_t palette[96] =
   0x83,0x05, 0xf8,0x0b, 0x91,0x0d, 0xa0,0x0f, 0xda,0x0e, 0x00,0x00, 0x00,0x00, 0x00,0x00
 };
 
-/*
-static uint8_t spriteregs[_maxsprites][8] = {
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0},
-	{ 0,0,0,0,0,0,0,0}
-};
-*/
 
 static uint8_t spriteregs[_maxsprites][8] = { };
 static pipe_t pipe = { 0,0,0,0,0 };
@@ -597,6 +588,9 @@ void main()
 	static uint16_t hiscore = 0;
 
 	SystemIRQ = IRQvector;
+	while (kbhit()) { cgetc(); }
+	while (!kbhit()) {}
+	while (kbhit()) { cgetc(); }
 	init_game();
 	clear_screen();
 /*
@@ -615,6 +609,7 @@ void main()
 	endframe();
 	YMKEYUP(0);
 */
+
 	while (1) {
 		titlescreen(&bird);
 		score = playgame(&bird);

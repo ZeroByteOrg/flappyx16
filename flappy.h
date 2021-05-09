@@ -10,7 +10,7 @@
 #define IRQvector	(*(uint16_t*)IRQVECTOR)
 
 static uint8_t	spriteregs[_maxsprites][8]; // shadow registers
-static uint8_t	frame;
+static uint8_t	frameready;
 static uint16_t SystemIRQ;
 static pipe_t	pipe;
 
