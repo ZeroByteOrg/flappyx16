@@ -60,6 +60,7 @@ extern uint8_t update_YM(soundstate* state, const uint8_t voice)
 		state->delay = data->delay;
 		state->data++;
 	}
+	// todo: move this functionality into the IRQ handler
 	--state->delay;
 	return 1;
 	

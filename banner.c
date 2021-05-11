@@ -1,7 +1,9 @@
 #include <stdint.h>
 #include <stdlib.h> // for abs()
+#include <cbm.h>	// for VERA definitions
 #include "banner.h"
 #include "sysdefs.h"
+#include "flappy.h"
 
 void init_banner(banner_t *banner, uint16_t addr, uint8_t tilespec, uint8_t layout)
 {
@@ -61,31 +63,55 @@ uint8_t *update_banner(banner_t *banner, uint8_t *spregs)
 		*spregs++ = 0x0c;	// collision mask 0, zdepth=3, vflip=0, hflip=0
 		*spregs++ = banner->spec;
 	}
-/*
-	*spregs++ = banner->addr & 0xff;	// sprite data lo_address
-	*spregs++ = banner->addr >> 8;	// sprite data hi_address
-	*spregs++ = banner->x & 0xff;
-	*spregs++ = banner->x >> 8 & 0x03; // think I can do w/o the mask...
-	*spregs++ = banner->y & 0xff;
-	*spregs++ = banner->y >> 8 & 0x03;
-	*spregs++ = 0x0c;			// collision mask 0, zdepth=3, vflip=0, hflip=0
-	*spregs++ = 0xf2;			// height=64, width=64, palette=2
-	*spregs++ = banner->addr + 0x40 & 0xff;	// sprite data lo_address
-	*spregs++ = banner->addr + 0x40 >> 8;	// sprite data hi_address
-	*spregs++ = banner->x + 64 & 0xff;
-	*spregs++ = banner->x + 64 >> 8 & 0x03; // think I can do w/o the mask...
-	*spregs++ = banner->y & 0xff;
-	*spregs++ = banner->y >> 8 & 0x03;
-	*spregs++ = 0x0c;			// collision mask 0, zdepth=3, vflip=0, hflip=0
-	*spregs++ = 0xf2;			// height=64, width=64, palette=2
-	*spregs++ = banner->addr + 0x80 & 0xff;	// sprite data lo_address
-	*spregs++ = banner->addr + 0x80 >> 8;	// sprite data hi_address
-	*spregs++ = banner->x + 128 & 0xff;
-	*spregs++ = banner->x + 128 >> 8 & 0x03; // think I can do w/o the mask...
-	*spregs++ = banner->y & 0xff;
-	*spregs++ = banner->y >> 8 & 0x03;
-	*spregs++ = 0x0c;			// collision mask 0, zdepth=3, vflip=0, hflip=0
-	*spregs++ = 0xf2;			// height=64, width=64, palette=2
-*/
 	return spregs;
 }
+
+extern void set_medalcolor(const uint16_t score, const uint16_t hiscore)
+{
+	#define medalpalette	0x1fa70
+	
+	uint8_t i;
+	
+	static const int8_t newhicolor[2][4] = {
+		{ 0xc9, 0x0d, 0xc9, 0x0d },
+		{ 0xff, 0x0f, 0x14, 0x0e }
+	};
+
+	static const int8_t color[5][10] = {
+		// none
+		{0xa6,0x0b, 0xa6,0x0b, 0xa6,0x0b, 0xa6,0x0b, 0xa6,0x0b},
+		// bronze
+		{0x40,0x0c, 0x71,0x0e, 0xa6,0x0e, 0x60,0x0c, 0x40,0x08},
+		// silver
+		{0xbb,0x0b, 0xdd,0x0d, 0xdd,0x0e, 0x9a,0x09, 0x66,0x06},
+		// gold
+		{0x90,0x0c, 0xb0,0x0f, 0xfa,0x0f, 0x60,0x09, 0x30,0x05},
+		// platinum
+		{0xdd,0x0d, 0xee,0x0e, 0xff,0x0f, 0xbc,0x0b, 0x77,0x07}
+	};
+	i = (score > hiscore) ? 1 : 0;
+	load_vera (medalpalette + 12, &newhicolor[i][0], 4);
+	if (score >= 40)
+	{
+		load_vera(medalpalette, &color[4][0], 10);
+		return;
+	}	 
+	if (score >= 30) 
+	{
+		load_vera(medalpalette, &color[3][0], 10);
+		return;
+	}	 
+	if (score >= 20) 
+	{
+		load_vera(medalpalette, &color[2][0], 10);
+		return;
+	}	 
+	if (score >= 10) 
+	{
+		load_vera(medalpalette, &color[1][0], 10);
+		return;
+	}
+	load_vera(medalpalette, &color[0][0], 10);
+	return;
+}
+

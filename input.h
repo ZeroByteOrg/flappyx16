@@ -18,9 +18,9 @@ typedef struct joy_t {
 
 #define joy0	 (*(uint8_t*) JOYBASE-1)
 
-#define IOFLAG_kb	0x0001
-#define IOFLAG_m1	0x0002
-#define IOFLAG_m2	0x0004
+#define IOFLAG_kb	0x0100
+#define IOFLAG_m1	0x0200
+#define IOFLAG_m2	0x0400
 
 extern uint8_t joynum;
 extern controller_t ctrlstate;

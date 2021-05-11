@@ -1,6 +1,10 @@
 #ifndef __FLAPPY_H__
 #define __FLAPPY_H__
 
+extern void load_vera(const unsigned long address, const uint8_t *data, uint16_t size);
+extern void vload(const char* filename, const uint8_t bank, const uint16_t address);
+
+/*
 #include "pipes.h"
 #include "bird.h"
 #include "input.h"
@@ -14,7 +18,7 @@ static uint8_t	frameready;
 static uint16_t SystemIRQ;
 static pipe_t	pipe;
 
-static const uint8_t	palette[96];
+static const uint8_t	palette[128];
 
 void load_vera(const unsigned long address, const uint8_t *data, uint16_t size);
 void vload(const char* filename, const uint8_t bank, const uint16_t address);
@@ -28,5 +32,6 @@ void clear_sprites();
 void update_pipes();
 void endframe(uint8_t **spriteptr);
 static void irq(void);
+*/
 
 #endif

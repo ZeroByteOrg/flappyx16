@@ -3,6 +3,7 @@ includes	+=	scoreboard.h sound.h
 sources		=	flappy.c bird.c pipes.c input.c banner.c
 sources		+=	scoreboard.c sound.c
 resources	=	BIRD.BIN BACKGROUND.BIN TILES.BIN BANNERS.BIN
+resources	+=	REPORT.BIN
 target		=	FLAPPY.PRG
 pkg			=	flappyx16.zip
 
@@ -17,7 +18,7 @@ install:
 	cp FLAPPY.PRG ~/x16/
 
 clean:
-	rm -f *.o *.s *.PRG
+	rm -f *.o *.s *.PRG *.sym
 
 run: all
 	x16emu -prg FLAPPY.PRG -run -joy1 SNES

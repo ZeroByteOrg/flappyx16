@@ -20,11 +20,17 @@ void check_input()
 	{
 		// mask the 4LSB of the high byte (joystick type bits)
 		// flip the logic of the joystick bits so 1=pressed
-		ctrlstate.current = (joystick+joynum)->state & 0xf0ff ^ 0xffff;
+		ctrlstate.current = (joystick+joynum)->state & 0xf0ff ^ 0xf0ff;
+	}
+	else {
+		ctrlstate.current = 0;
 	}
 	if (kbhit()) {
 		cgetc();
 		ctrlstate.current |= IOFLAG_kb;
+	}
+	else {
+		ctrlstate.current &= ! IOFLAG_kb;
 	}
 	// TODO: put the mouse buttons into the ctrlstate
 	ctrlstate.pressed  = (ctrlstate.last ^ ctrlstate.current) & ctrlstate.current;

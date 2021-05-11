@@ -17,7 +17,8 @@ typedef struct banner_t {
   uint8_t	step;			// amt to add to SPR ADDR for each tile
 } banner_t;
 
-void init_banner(banner_t *banner, uint16_t addr, uint8_t tilespec, uint8_t layout);
+extern void init_banner(banner_t *banner, uint16_t addr, uint8_t tilespec, uint8_t layout);
 extern uint8_t *update_banner(banner_t *banner, uint8_t *spregs);
+extern void set_medalcolor(const uint16_t score, const uint16_t hiscore);
 
 #endif

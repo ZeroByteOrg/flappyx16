@@ -53,7 +53,6 @@ uint8_t *update_scoreboard(const struct scoreboard_t *s, uint8_t *reg)
 				{
 				}
 			}
-			//xo = s->center ? 0: 0-((i+1)*digitwidth)/2;
 		}
 		if (show) {
 			*reg++ = SPRlo(_digitbase + (digit * _tilebytes));

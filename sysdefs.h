@@ -26,16 +26,22 @@
 
 #define _bannerx			(320/2 - (64*3/2))
 #define _bannery			4
-#define _hiscoreoffset		(64*3-16)
+#define _reporty			(_bannery + 64)
+#define _hiscoreoffsetx		(64*3-23)
+#define _hiscoreoffsety		106
+#define _hiscorespacing		46
 #define _bannertitlespec	0xf2 // hhwwpppp
-#define _bannerreportspec	0xf2
+#define _bannerreportspec	0xf3
 
 #define BANNER_1x3			0x13
+#define BANNER_2x3			0x23
 #define	BANNER_3x3			0x33
 
 #define BANNER_TITLE		SPRadr(_bannerbase)
 #define BANNER_GETREADY		SPRadr(_bannerbase + 3 * 64 * 64 / 2)
 #define BANNER_GAMEOVER		SPRadr(_bannerbase + 6 * 64 * 64 / 2)
+#define BANNER_REPORT		SPRadr(_reportbase)
+//#define BANNER_REPORT		SPRadr(BANNER_GAMEOVER + 3 * 64 * 64 / 2)
 
 // VRAM layout
 #define _mapbase  	((unsigned long)0x04000)

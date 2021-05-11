@@ -8,6 +8,36 @@
 #include "flappy.h"
 #include "sound.h"
 
+// ============================ flappy.h begin
+
+#include "pipes.h"
+#include "bird.h"
+#include "input.h"
+#include "banner.h"
+#include "scoreboard.h"
+
+#define IRQvector	(*(uint16_t*)IRQVECTOR)
+
+static uint8_t	spriteregs[_maxsprites][8]; // shadow registers
+static uint8_t	frameready;
+static uint16_t SystemIRQ;
+static pipe_t	pipe;
+
+static const uint8_t	palette[128];
+
+void init_game();
+void titlescreen();
+uint16_t playgame(bird_t* bird);
+void gameover(bird_t* bird, uint16_t p_score, uint16_t p_hiscore);
+void update_screen();
+void clear_screen();
+void clear_sprites();
+void update_pipes();
+void endframe(uint8_t **spriteptr);
+static void irq(void);
+
+
+// ============================ flappy.h end
 
 static soundstate psgvoice[_psgvoices];
 static soundstate fmvoice[_fmvoices];
@@ -55,6 +85,7 @@ void init_game()
 	vload("tiles.bin",VRAMhi(_tilebase),VRAMlo(_tilebase));
 	vload("bird.bin",VRAMhi(_birdbase),VRAMlo(_birdbase));
 	vload("banners.bin",VRAMhi(_bannerbase),VRAMlo(_bannerbase));
+	vload("report.bin",VRAMhi(_reportbase),VRAMlo(_reportbase));
 	load_vera(_PALREGS,palette,sizeof(palette));
 
 	// set display to 320x240
@@ -310,7 +341,7 @@ void titlescreen(bird_t* bird)
 uint16_t playgame(bird_t* bird)
 {
 	//#define profiling
-	//#define debug
+	#define debug
 	//#define testbird
 
 	banner_t banner;
@@ -346,16 +377,18 @@ uint16_t playgame(bird_t* bird)
 	banner.target = -64;
 	banner.speed  = 0;
 	lastfloor = _floor;
+	while (kbhit()) { cgetc(); }
 	endframe(&spriteptr);
 	while (1) {
+		if (kbhit()) { cgetc(); ctrlstate.pressed=1; }
 		// update game state
 		update_pipes(&pipe);
 #ifdef debug
-		dbout[0].score = bird->y;
-		dbout[1].score = pipe.ceiling;
-		dbout[2].score = pipe.floor;
-		dbout[3].score = pipe.scroll >> 2;
-		dbout[4].score = ctrlstate.current;
+		dbout[0].score = ctrlstate.current;
+		dbout[1].score = ctrlstate.last;
+		dbout[2].score = ctrlstate.pressed;
+		dbout[3].score = ctrlstate.released;
+		dbout[4].score = banner.speed;
 		for (d=0 ; d<5 ; d++)
 		{
 			spriteptr = update_scoreboard(&dbout[d], spriteptr);
@@ -421,6 +454,17 @@ uint16_t playgame(bird_t* bird)
 			do {
 				spriteptr = update_banner(&banner, spriteptr);
 				spriteptr = update_bird(bird, spriteptr);
+				#ifdef debug
+		dbout[0].score = ctrlstate.current;
+		dbout[1].score = ctrlstate.last;
+		dbout[2].score = ctrlstate.pressed;
+		dbout[3].score = ctrlstate.released;
+		dbout[4].score = banner.speed;
+		for (d=0 ; d<5 ; d++)
+		{
+			spriteptr = update_scoreboard(&dbout[d], spriteptr);
+		}
+#endif
 				endframe(&spriteptr);
 			} while (!ctrlstate.released || banner.speed);
 			return score.score;
@@ -463,12 +507,15 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 	scoreboard_t	score;
 	scoreboard_t	hiscore;
 	banner_t		banner;
+	banner_t		report;
 	uint8_t*		spriteptr;
 	
 	uint8_t			f = 60;
 	
-	init_scoreboard(&score, _bannerx + _hiscoreoffset, 100, SB_right, SB_decimal);
-	init_scoreboard(&hiscore, _bannerx + _hiscoreoffset, 120, SB_right, SB_decimal);
+	set_medalcolor(0, p_hiscore); // hide the medal until the score is tallied
+	set_medalcolor(p_score, p_hiscore);
+	init_scoreboard(&score, _bannerx + _hiscoreoffsetx, _hiscoreoffsety, SB_right, SB_decimal);
+	init_scoreboard(&hiscore, _bannerx + _hiscoreoffsetx, _hiscoreoffsety + _hiscorespacing, SB_right, SB_decimal);
 	score.score   = p_score;
 	hiscore.score = p_hiscore;
 	
@@ -477,6 +524,14 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 	banner.y = _bannery;
 	banner.target = banner.y;
 	banner.speed = 0;
+
+	init_banner(&report,BANNER_REPORT,_bannerreportspec,BANNER_2x3);
+	report.x = _bannerx;
+	report.y = _reporty;
+	report.target = _reporty;
+	report.speed  = 0;	// due to sprite priority issues, it is not
+						// beneficial to use the auto-move feature
+						// of the banner type for this object
 	
 	spriteptr = (uint8_t*)spriteregs;
 	ctrlstate.released = 0;
@@ -492,6 +547,7 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 		spriteptr = update_scoreboard(&score, spriteptr);
 		spriteptr = update_scoreboard(&hiscore, spriteptr);
 		spriteptr = update_banner(&banner, spriteptr);
+		spriteptr = update_banner(&report, spriteptr);
 		spriteptr = update_bird(bird, spriteptr);
 		endframe(&spriteptr);
 	}
@@ -508,14 +564,12 @@ void endframe(uint8_t **spriteptr)
 	// flag the current sprite as first unused
 	s[6] = 0xfe;
 	frameready=1;
-	update_sound();
+	update_sound(); // todo: make sound use the frameready mechanic
+					//       with the IRQ doing the --delay function
 	while (frameready) {}
 
-//	waitvsync();
-//	update_screen(pipe.scroll >> 2);
-
 	// reset sprite pointer to first sprite
-	*spriteptr = (uint8_t*)&spriteregs;
+	*spriteptr = &spriteregs[0][0];
 	check_input();
 }
 
@@ -531,17 +585,24 @@ void irq(void)
 	asm("jmp (_SystemIRQ)");
 }
 
-
-static const uint8_t palette[96] =
+// TODO: move this data into a .BIN and vload() it directly to VERA
+static const uint8_t palette[128] =
 {
+  // background palette
   0xbc,0x06, 0x00,0x00, 0xff,0x0f, 0xf0,0x00, 0xc0,0x00, 0x80,0x00, 0xd4,0x0f, 0xe5,0x0e,
   0x81,0x0f, 0x45,0x0b, 0x78,0x0f, 0xfb,0x0f, 0xb4,0x0d, 0x4f,0x0e, 0xed,0x0f, 0x33,0x0f,
 
+  // tile palette
   0xff,0x00, 0xfd,0x0e, 0xc7,0x07, 0xb7,0x06, 0xd7,0x07, 0xdc,0x09, 0xdb,0x0b, 0xdc,0x0b,
   0xdc,0x0c, 0xed,0x0e, 0xec,0x0d, 0x00,0x00, 0xb4,0x0d, 0x4f,0x0e, 0xff,0x0f, 0x33,0x0f,
   
+  // banner palette
   0x00,0x00, 0xbc,0x06, 0xed,0x0b, 0x11,0x01, 0xa6,0x0b, 0xd8,0x0d, 0xfa,0x0f, 0xc3,0x07,
-  0x83,0x05, 0xf8,0x0b, 0x91,0x0d, 0xa0,0x0f, 0xda,0x0e, 0x00,0x00, 0x00,0x00, 0x00,0x00
+  0x83,0x05, 0xf8,0x0b, 0x91,0x0d, 0xa0,0x0f, 0xda,0x0e, 0x0e,0x0f, 0xff,0x0f, 0x14,0x0e,
+  
+  // report card palette (gets manipulated)
+  0x00,0x00, 0x22,0x03, 0xa6,0x0b, 0xc9,0x0d, 0xd9,0x0e, 0xda,0x0d, 0xa4,0x0d, 0x91,0x02, 
+  0x90,0x0c, 0xb0,0x0f, 0xfa,0x0f, 0x60,0x09, 0x30,0x05, 0x0e,0x0f, 0xff,0x0f, 0x14,0x0e
 };
 
 
@@ -588,9 +649,6 @@ void main()
 	static uint16_t hiscore = 0;
 
 	SystemIRQ = IRQvector;
-	while (kbhit()) { cgetc(); }
-	while (!kbhit()) {}
-	while (kbhit()) { cgetc(); }
 	init_game();
 	clear_screen();
 /*

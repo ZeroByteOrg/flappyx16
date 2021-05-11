@@ -7,24 +7,6 @@
 
 #define scrollmask ((32*16-1) << 2 | 0x03)
 
-/*
-extern uint8_t check_pipes(pipe_t *pipe, const int16_t x, const int16_t y)
-{
-	if (pipe->h2 == 255)
-		return 0;
-	if (pipe->column < 5 && pipe->column >=2)
-	{
-		vpoke(0x00,_PALREGS);
-		while (!ctrlstate.pressed) { check_input(); }
-	}
-	else
-	{
-		vpoke(0xbc,_PALREGS);
-	}
-	return 0;
-}
-*/
-
 void init_pipes(pipe_t *pipe)
 {
 	uint16_t i;
