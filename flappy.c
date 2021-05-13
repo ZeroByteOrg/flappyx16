@@ -341,7 +341,7 @@ void titlescreen(bird_t* bird)
 uint16_t playgame(bird_t* bird)
 {
 	//#define profiling
-	#define debug
+	//#define debug
 	//#define testbird
 
 	banner_t banner;
