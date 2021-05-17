@@ -39,7 +39,7 @@ static const uint8_t	palette[128];
 void init_game();
 uint8_t titlescreen(bird_t* bird, uint8_t difficulty);
 uint16_t playgame(bird_t* bird);
-void gameover(bird_t* bird, uint16_t p_score, uint16_t p_hiscore);
+void gameover(bird_t* bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_difficulty);
 void update_screen();
 void clear_screen();
 void clear_sprites();
@@ -315,19 +315,22 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 		options[i].y = optiony[i];
 		options[i].target = optiony[i];
 		options[i].speed = 0;
-	}
-	// hide the Dark Souls option offscreen
-	options[5].target = 240;
-	options[5].y = 240;
-	opnums[N_OPTIONS-1].y = 300; // we don't really use option n's banner
-	for (i = 0 ; i < N_OPTIONS-1 ; i++) {
 		init_banner(&opnums[i], optionaddr[i], _banneropnumspec, BANNER_1x1);
-		opnums[i].x = options[i+1].x - 20;
-		opnums[i].y = options[i+1].y;
-		opnums[i].target = options[i+1].target;
+		opnums[i].x = options[i].x - 20;
+		opnums[i].y = options[i].y;
+		opnums[i].target = options[i].target;
 		opnums[i].speed = 0;
 	}
-	
+	// we don't use option 0's number banner so hide it offscreen
+	opnums[0].y = 300;
+	opnums[0].target = 300;
+	opnums[0].speed = 0;
+	// hide the Dark Souls option offscreen if not selected
+	if (difficulty != 4)
+	{
+		options[5].target = 240;
+		options[5].y = 240;
+	}
 	#ifdef debug
 	init_scoreboard(&db[0],0,10,SB_left,SB_hex); 
 	init_scoreboard(&db[1],0,30,SB_left,SB_hex); 
@@ -372,14 +375,9 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 		for (i = 0 ; i < N_OPTIONS ; i++)
 		{
 			spriteptr = update_banner(&options[i], spriteptr);
-			if (i == difficulty)
+			if ((i-1 != difficulty)||(f & 16)) 
 			{
-				if (f & 4)
-					spriteptr = update_banner(&opnums[i], spriteptr);
-			}
-			else
-			{
-				if (difficulty != 5)
+				if ((i != 5)||(difficulty == 4))
 					spriteptr = update_banner(&opnums[i], spriteptr);
 			}
 		}
@@ -440,7 +438,7 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 			if (darksoulcounter >= 180)
 			{
 				difficulty = 4;
-				options[4].target = optiony[4];
+				options[5].target = optiony[5];
 				++noinput;
 				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
 				darksoulcounter = 0;
@@ -614,12 +612,13 @@ uint16_t playgame(bird_t* bird)
 	}
 }
 
-void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
+void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_difficulty)
 {
 	scoreboard_t	score;
 	scoreboard_t	hiscore;
 	banner_t		banner;
 	banner_t		report;
+	banner_t		modelabel;
 	uint8_t*		spriteptr;
 
 	int16_t			scorediff = p_score;
@@ -647,6 +646,11 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 						// beneficial to use the auto-move feature
 						// of the banner type for this object
 	
+	init_banner(&modelabel, BANNER_OPTION(p_difficulty+1), _banneroptionspec, BANNER_1x2);
+	modelabel.x = _bannerx + _modeoffsetx;
+	modelabel.target=_reporty + _modeoffsety;
+	modelabel.speed = 0;
+
 	spriteptr = (uint8_t*)spriteregs;
 	ctrlstate.released = 0;
 	ctrlstate.pressed  = 0;
@@ -664,6 +668,7 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 				report.y = _reporty;
 			score.y = report.y + _hiscoreoffsety;
 			hiscore.y = score.y + _hiscorespacing;
+			modelabel.y = report.y + _modeoffsety;
 		}
 		else if (scorediff)
 		{
@@ -698,6 +703,7 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 		spriteptr = update_scoreboard(&score, spriteptr);
 		spriteptr = update_scoreboard(&hiscore, spriteptr);
 		spriteptr = update_banner(&banner, spriteptr);
+		spriteptr = update_banner(&modelabel, spriteptr);
 		spriteptr = update_banner(&report, spriteptr);
 		spriteptr = update_bird(bird, spriteptr);
 		endframe(&spriteptr);
@@ -814,12 +820,12 @@ static const int16_t optiony[N_OPTIONS] = {
 };
 	
 static const int16_t optionaddr[N_OPTIONS] = {
+	SPRadr(_tilebase),			// 0
 	SPRadr(_tilebase + 1 * 16 * 16 /2),	// 1
 	SPRadr(_tilebase + 2 * 16 * 16 /2),	// 2
 	SPRadr(_tilebase + 3 * 16 * 16 /2),	// 3
 	SPRadr(_tilebase + 4 * 16 * 16 /2),	// 4
-	SPRadr(_tilebase + 9 * 16 * 16 /2),	// 9
-	SPRadr(_tilebase)					// 0
+	SPRadr(_tilebase + 9 * 16 * 16 /2)	// 9
 };
 
 void main()
@@ -854,7 +860,7 @@ void main()
 	while (1) {
 		difficulty = titlescreen(&bird, difficulty);
 		score = playgame(&bird);
-		gameover(&bird, score, hiscore[difficulty]);
+		gameover(&bird, score, hiscore[difficulty], difficulty);
 		// wait to actually update the hiscore so that the
 		// gameover() routine can detect a new hi score
 		if (score >= hiscore[difficulty])

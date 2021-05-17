@@ -10,7 +10,7 @@
 
 //#define R39
 //#define debug
-#define profiling
+//#define profiling
 
 // Game Parameters
 #define _ceiling		-64
@@ -39,6 +39,8 @@
 #define _hiscoreoffsetx		(64*3-23)
 #define _hiscoreoffsety		38
 #define _hiscorespacing		46
+#define _modeoffsetx		14
+#define _modeoffsety		98
 #define _bannertitlespec	0xf2 // hhwwpppp
 #define _bannerreportspec	0xf3
 #define _banneroptionspec	0x72 // 64x16, palette 2
