@@ -11,7 +11,7 @@ void init_pipes(pipe_t *pipe)
 {
 	uint16_t i;
 	
-	pipe->speed		= _pipespeed;
+	pipe->speed		= 8; // default value
 	pipe->column	= 6;
 	pipe->active	= 0;
 	pipe->height	= 255;
@@ -19,6 +19,7 @@ void init_pipes(pipe_t *pipe)
 	pipe->h2		= 255;
 	pipe->ceiling	= _ceiling;
 	pipe->floor		= _floor;
+	pipe->gapsize	= 3;  // default to 3, game changes w/ difficulty selection
 
 	VERA.control	= 0;
 	VERA.address	= VRAMlo(_mapbase);
@@ -33,7 +34,7 @@ void init_pipes(pipe_t *pipe)
 void update_pipes(pipe_t *pipe)
 {
 	int8_t row, col;
-	uint8_t tile;
+	uint8_t tile, i;
 	int16_t last, current;
 	
 	// 32 columns * 16 pixels per column, plus two bits for subpixel amt.
@@ -58,7 +59,7 @@ void update_pipes(pipe_t *pipe)
 	// start waiting to draw the next pipe
 	// *3 is so we can put a longer delay for the first pipe @ game start
 	if (pipe->column > _pipespacing * 3)
-	//i.e. if column < 0, but column is unsigned so it just loops to 255
+	//column is unsigned & just loops to 255 so this is: "if column < 0" 
 	{
 		pipe->column=_pipespacing; // set gap before next pipe spawns
 	}
@@ -67,8 +68,8 @@ void update_pipes(pipe_t *pipe)
 		if (pipe->column < 5 && pipe->column >=2)
 		{
 			// update ceiling/floor for pipe gap
-			pipe->ceiling	= (pipe->h2+1)*16 - 4; //+3 for bird pixel offset in sprite
-			pipe->floor		= pipe->ceiling + 48 - 16;
+			pipe->ceiling	= (pipe->h2+1)*16 - 4; //-4 for bird pixel offset within sprite
+			pipe->floor		= pipe->ceiling + 16 * pipe->gapsize - _birdheight;
 		}
 		else
 		{
@@ -79,7 +80,7 @@ void update_pipes(pipe_t *pipe)
 	}
 	if (pipe->column == 1)
 	{
-		pipe->height = (uint8_t)rand()%8 + 1;
+		pipe->height = (uint8_t)rand()%7 + 1;
 		//pipe->height = 5; // for helping set the hitbox
 		tile=TILE_pipel;
 	}
@@ -104,12 +105,11 @@ void update_pipes(pipe_t *pipe)
 	{
 		if (row==pipe->height)
 		{
-			VERA.data0=TILE_pipetopr+pipe->column;	
-			VERA.data0=TILE_space;
-			VERA.data0=TILE_space;
-			VERA.data0=TILE_space;
+			VERA.data0=TILE_pipetopr+pipe->column;
+			for (i=0 ; i < pipe->gapsize ; i++)
+				VERA.data0=TILE_space;
 			VERA.data0=TILE_pipebotr+pipe->column;
-			row += 2 + _pipegap;
+			row += 2 + pipe->gapsize;
 		}
 		VERA.data0=tile;
 	}

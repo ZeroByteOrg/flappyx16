@@ -4,7 +4,7 @@
 void flap_bird(bird_t *bird)
 {
 	bird->flapping = bird->y - 16;
-	bird->vy = _birdflapthrust;
+	bird->vy = bird->thrust;
 	bird->animsteps++;
 	bird->frame = 0;
 	bird->animspeed = 2;
@@ -26,6 +26,8 @@ uint8_t check_bird(bird_t *bird, const int16_t ceil, const int16_t floor)
 
 void init_bird(bird_t *bird, const uint16_t x, const uint16_t y)
 {
+	// we don't set basegravity or thrust - the game should set these
+	// whenever difficulty settings are changed/applied
 	bird->x			= x;
 	bird->y			= y;
 	bird->vx		= 0;
@@ -35,7 +37,7 @@ void init_bird(bird_t *bird, const uint16_t x, const uint16_t y)
 	bird->frame		= 0;
 	bird->flapping	= 0;
 	bird->gravity	= 0;
-	bird->animdelay	= 0;  // this is a counter, not a 
+	bird->animdelay	= 0; 	// this is a counter, not a parameter
 	bird->animspeed	= _birdanimspeed;
 	bird->animsteps	= _birdanimsteps;
 }
@@ -79,11 +81,11 @@ uint8_t* update_bird(bird_t *bird, uint8_t *regs)
 	{
 		bird->pose=0;
 	}
-	else if (bird->vy > 208)
+	else if (bird->vy > 128) // 208
 	{
 		bird->pose=3;
 	}
-	else if (bird->vy > 128)
+	else if (bird->vy > 96) // 128
 	{
 		bird->pose=2;
 	}

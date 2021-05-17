@@ -7,6 +7,19 @@
 
 void init_banner(banner_t *banner, uint16_t addr, uint8_t tilespec, uint8_t layout)
 {
+	/* this init routine is more focused on getting the sprite display parameters
+	 * properly set up for the desired banner, and not in initializing the banner
+	 * location and motion values. The routine calling this should directly set those
+	 * as required for the situation.
+	 *  
+	 * parameters:
+	 * 		*banner = pointer to the banner data being intitialized
+	 *  	addr = the sprite data VRAM address, shifted for use in the sprite register
+	 * 				this should be the address of the first sprite tile, with the rest
+	 * 				being computed on the fly
+	 * 		tilespec = sprite size/color palette selection (see sprite register documentation)
+	 * 		layout = rows x cols - rows stored in hi nybble, cols stored in lo nybble
+	*/ 
 	banner->x 		= 0;
 	banner->y 		= 240; // default to an off-screen location
 	banner->speed	= 0;
@@ -15,6 +28,10 @@ void init_banner(banner_t *banner, uint16_t addr, uint8_t tilespec, uint8_t layo
 	banner->spec	= tilespec;
 	banner->cols	= layout & 0x0f;
 	banner->ntiles	= banner->cols * (layout >> 4);
+	// compute the tile H and W pixel counts from the register settings
+	// register uses bits 4-5 for sprite widths and bits 6-7 for height
+	// the values 0-3 map to pixel counts of 8,16,32,64
+	// so the following calcs are essentially: pixels = 8*2^n
 	banner->tile_h	= 8 << (tilespec >> 6);
 	banner->tile_w	= 8 << ((tilespec & 0x30) >> 4);
 	banner->step	= SPRaddrstep(banner->tile_h * banner->tile_w / 2);
@@ -66,18 +83,18 @@ uint8_t *update_banner(banner_t *banner, uint8_t *spregs)
 	return spregs;
 }
 
-extern void set_medalcolor(const uint16_t score, const uint16_t hiscore)
+extern int16_t set_medalcolor(const uint16_t score, const uint16_t hiscore)
 {
 	#define medalpalette	0x1fa70
 	
-	uint8_t i;
+	int16_t h;
 	
-	static const int8_t newhicolor[2][4] = {
+	static const uint8_t newhicolor[2][4] = {
 		{ 0xc9, 0x0d, 0xc9, 0x0d },
 		{ 0xff, 0x0f, 0x14, 0x0e }
 	};
 
-	static const int8_t color[5][10] = {
+	static const uint8_t color[5][10] = {
 		// none
 		{0xa6,0x0b, 0xa6,0x0b, 0xa6,0x0b, 0xa6,0x0b, 0xa6,0x0b},
 		// bronze
@@ -89,29 +106,35 @@ extern void set_medalcolor(const uint16_t score, const uint16_t hiscore)
 		// platinum
 		{0xdd,0x0d, 0xee,0x0e, 0xff,0x0f, 0xbc,0x0b, 0x77,0x07}
 	};
-	i = (score > hiscore) ? 1 : 0;
-	load_vera (medalpalette + 12, &newhicolor[i][0], 4);
+	if (score > hiscore) {
+		h = score;
+		load_vera (medalpalette + 12, &newhicolor[1][0], 4);
+	}
+	else {
+		h = hiscore;
+		load_vera (medalpalette + 12, &newhicolor[0][0], 4);
+	}
 	if (score >= 40)
 	{
 		load_vera(medalpalette, &color[4][0], 10);
-		return;
+		return(h);
 	}	 
 	if (score >= 30) 
 	{
 		load_vera(medalpalette, &color[3][0], 10);
-		return;
+		return(h);
 	}	 
 	if (score >= 20) 
 	{
 		load_vera(medalpalette, &color[2][0], 10);
-		return;
+		return(h);
 	}	 
 	if (score >= 10) 
 	{
 		load_vera(medalpalette, &color[1][0], 10);
-		return;
+		return(h);
 	}
 	load_vera(medalpalette, &color[0][0], 10);
-	return;
+	return(h);
 }
 

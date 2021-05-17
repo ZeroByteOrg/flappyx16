@@ -23,10 +23,21 @@ static uint8_t	frameready;
 static uint16_t SystemIRQ;
 static pipe_t	pipe;
 
+typedef struct param_t {
+	uint8_t
+		speed,
+		gapsize;
+	int8_t
+		gravity,
+		thrust;
+	} param_t;
+	
+static const param_t params[5];
+
 static const uint8_t	palette[128];
 
 void init_game();
-void titlescreen();
+uint8_t titlescreen(bird_t* bird, uint8_t difficulty);
 uint16_t playgame(bird_t* bird);
 void gameover(bird_t* bird, uint16_t p_score, uint16_t p_hiscore);
 void update_screen();
@@ -45,6 +56,10 @@ static const sfxframe ding[];
 static const sfxframe fall[];
 static const sfxframe flap[];
 static const sfxframe smack[];
+static const int16_t optionx[N_OPTIONS];
+static const int16_t optiony[N_OPTIONS];	
+static const int16_t optionaddr[N_OPTIONS];
+
 
 void load_vera(const unsigned long address, const uint8_t *data, uint16_t size)
 {
@@ -86,6 +101,7 @@ void init_game()
 	vload("bird.bin",VRAMhi(_birdbase),VRAMlo(_birdbase));
 	vload("banners.bin",VRAMhi(_bannerbase),VRAMlo(_bannerbase));
 	vload("report.bin",VRAMhi(_reportbase),VRAMlo(_reportbase));
+	vload("difficulty.bin",VRAMhi(_difficultbase),VRAMlo(_difficultbase));
 	load_vera(_PALREGS,palette,sizeof(palette));
 
 	// set display to 320x240
@@ -129,6 +145,7 @@ void init_game()
 	// clear the keyboard buffer
 	while (kbhit()) { cgetc(); }
 	joynum = 0;
+	ctrlstate.enabled = 1;
 }
 
 void clear_sprites()
@@ -250,7 +267,7 @@ void update_sound()
 	}
 }
 
-void titlescreen(bird_t* bird)
+uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 {
 	#define pogospeed 2
 	#define maxy 16
@@ -260,56 +277,81 @@ void titlescreen(bird_t* bird)
 	#define BIRDYOFFSET 21
 
 	banner_t banner;
-
-	uint8_t *spriteptr; // current sprite pointer
+	banner_t options[N_OPTIONS];
+	banner_t opnums[N_OPTIONS];
+	
+	uint8_t i,f;
+	
 	#ifdef debug
-	scoreboard_t sa;
-	scoreboard_t sb;
+	scoreboard_t db[4];
+	uint8_t	d;
+	joy_t *joystick = ((joy_t*)JOYBASE);
 	#endif
 	
+	uint8_t *spriteptr; // current sprite pointer
+
 	int16_t target[2] = { miny, maxy };
 	uint8_t	t = 0;
     uint8_t delay	= pogospeed;
     uint8_t noinput = 16; // ignore input for this many frames
+    uint8_t darksoulcounter = 0;
 
+	// keep previous difficulty, or initialize to 1 the first time
+	if (difficulty >= 5)
+		difficulty = 2;
 	spriteptr = &spriteregs[0][0];
 	clear_sprites();
 	init_pipes(&pipe);
 	init_bird(bird, _bannerx+BIRDXOFFSET, _bannery+BIRDYOFFSET);
 	init_banner(&banner,BANNER_TITLE,_bannertitlespec,BANNER_1x3);
-	printf("%s 0x%04x\n","n tiles     = ", banner.ntiles);
-	printf("%s 0x%04x\n","&banner     = ", &banner);
-	printf("%s 0x%04x\n","spriteptr   = ", spriteptr);
-	printf("%s 0x%04x\n","&spriteregs = ", &spriteregs);
 	banner.x = _bannerx;
 	banner.y = _bannery;
 	banner.speed = 1;
 	banner.target = target[t];
 	
+	for (i = 0 ; i < N_OPTIONS ; i++) {
+		init_banner(&options[i], BANNER_OPTION(i), _banneroptionspec, BANNER_1x2);
+		options[i].x = optionx[i];
+		options[i].y = optiony[i];
+		options[i].target = optiony[i];
+		options[i].speed = 0;
+	}
+	// hide the Dark Souls option offscreen
+	options[5].target = 240;
+	options[5].y = 240;
+	opnums[N_OPTIONS-1].y = 300; // we don't really use option n's banner
+	for (i = 0 ; i < N_OPTIONS-1 ; i++) {
+		init_banner(&opnums[i], optionaddr[i], _banneropnumspec, BANNER_1x1);
+		opnums[i].x = options[i+1].x - 20;
+		opnums[i].y = options[i+1].y;
+		opnums[i].target = options[i+1].target;
+		opnums[i].speed = 0;
+	}
+	
 	#ifdef debug
-	init_scoreboard(&sb,0,100,SB_left,SB_hex);
-// 	init_scoreboard(&sb,0,120,SB_left,SB_hex);
-
-//	sb.x		= 0;
-//	sb.y		= 120;
-//	sb.hex		= SB_hex;
-//	sb.center	= SB_left;
-//	sb.score	= 0;
-
+	init_scoreboard(&db[0],0,10,SB_left,SB_hex); 
+	init_scoreboard(&db[1],0,30,SB_left,SB_hex); 
+	init_scoreboard(&db[2],0,50,SB_left,SB_hex); 
+	init_scoreboard(&db[3],0,70,SB_left,SB_hex); 
 	#endif
 	ctrlstate.pressed	= 0;
 	ctrlstate.current	= 0;
-	ctrlstate.last		= 0xffff;
+	ctrlstate.last		= 0;
 	ctrlstate.released	= 0;
 	
 	while (!ctrlstate.pressed)
 	{
-		#ifdef debug
-//		sa.score = banner.addr;
-//		sb.score = banner.step;
-//		spriteptr = update_scoreboard(&sa,spriteptr);
-//		spriteptr = update_scoreboard(&sb,spriteptr);
-		#endif
+		f++;
+#ifdef debug
+		db[0].score = ctrlstate.current;
+		db[1].score = options[0].x;
+		db[2].score = options[0].y;
+		db[3].score = options[0].target;
+		for (d=0 ; d<4 ; d++)
+		{
+			spriteptr = update_scoreboard(&db[d], spriteptr);
+		}
+#endif
 		if (delay) {
 			delay--;
 			banner.speed = 0;
@@ -327,7 +369,90 @@ void titlescreen(bird_t* bird)
 		spriteptr = update_banner(&banner,spriteptr);
 		bird->y = banner.y + BIRDYOFFSET;
 		spriteptr = update_bird(bird,spriteptr);
+		for (i = 0 ; i < N_OPTIONS ; i++)
+		{
+			spriteptr = update_banner(&options[i], spriteptr);
+			if (i == difficulty)
+			{
+				if (f & 4)
+					spriteptr = update_banner(&opnums[i], spriteptr);
+			}
+			else
+			{
+				if (difficulty != 5)
+					spriteptr = update_banner(&opnums[i], spriteptr);
+			}
+		}
 		endframe(&spriteptr);
+		switch (ctrlstate.key)
+		{
+		case '1':
+			{
+				difficulty = 0;
+				options[5].target = 240;
+				++noinput;
+				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
+				break;
+			}
+		case '2':
+			{
+				difficulty = 1;
+				options[5].target = 240;
+				++noinput;
+				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
+				break;
+			}
+		case '3':
+			{
+				difficulty = 2;
+				options[5].target = 240;
+				++noinput;
+				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
+				break;
+			}
+		case '4':
+			{
+				difficulty = 3;
+				options[5].target = 240;
+				++noinput;
+				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
+				break;
+			}
+		case '9':
+			{
+				difficulty = 4;
+				options[5].target = optiony[5];
+				++noinput;
+				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
+				break;
+			}
+		}
+		if (ctrlstate.current & 0x20)  // if select is pressed
+		{
+			++darksoulcounter;
+			if (ctrlstate.pressed * 0x20) {
+				difficulty++;
+				if (difficulty > 3)
+					difficulty = 0;
+				++noinput;
+				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
+			}
+			if (darksoulcounter >= 180)
+			{
+				difficulty = 4;
+				options[4].target = optiony[4];
+				++noinput;
+				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
+				darksoulcounter = 0;
+			}
+		}
+		else
+		{
+			darksoulcounter = 0;
+		}
+		pipe.speed = params[difficulty].speed;
+		if (options[5].target != options[5].y)
+			options[5].speed = 4;
 		if (noinput) {
 			noinput--;
 			// TODO - make this a functionality of check_input()
@@ -335,7 +460,12 @@ void titlescreen(bird_t* bird)
 			ctrlstate.released = 0;
 		}
 	}
-	
+	// set game parameters based on chosen difficulty
+	pipe.speed			= params[difficulty].speed;
+	pipe.gapsize		= params[difficulty].gapsize;
+	bird->basegravity	= params[difficulty].gravity;
+	bird->thrust		= params[difficulty].thrust;
+	return(difficulty);
 }
 
 uint16_t playgame(bird_t* bird)
@@ -350,7 +480,7 @@ uint16_t playgame(bird_t* bird)
 	uint16_t lastfloor;
 
 #ifdef debug
-	scoreboard_t dbout[5];
+	scoreboard_t dbout[3];
 	uint8_t d;
 #endif
 #ifdef testbird
@@ -367,8 +497,6 @@ uint16_t playgame(bird_t* bird)
 	init_scoreboard(&dbout[0],0,10,SB_left,SB_hex); 
 	init_scoreboard(&dbout[1],0,30,SB_left,SB_hex); 
 	init_scoreboard(&dbout[2],0,50,SB_left,SB_hex); 
-	init_scoreboard(&dbout[3],0,70,SB_left,SB_hex); 
-	init_scoreboard(&dbout[4],0,90,SB_left,SB_hex); 
 #endif
 	init_bird(bird, _birdstartx, _birdstarty);
 	init_banner(&banner,BANNER_GETREADY,_bannertitlespec,BANNER_1x3);
@@ -380,29 +508,29 @@ uint16_t playgame(bird_t* bird)
 	while (kbhit()) { cgetc(); }
 	endframe(&spriteptr);
 	while (1) {
-		if (kbhit()) { cgetc(); ctrlstate.pressed=1; }
+//		if (kbhit()) {cgetc(); ctrlstate.pressed=1; }
 		// update game state
 		update_pipes(&pipe);
 #ifdef debug
 		dbout[0].score = ctrlstate.current;
 		dbout[1].score = ctrlstate.last;
 		dbout[2].score = ctrlstate.pressed;
-		dbout[3].score = ctrlstate.released;
-		dbout[4].score = banner.speed;
-		for (d=0 ; d<5 ; d++)
+		for (d=0 ; d<3 ; d++)
 		{
 			spriteptr = update_scoreboard(&dbout[d], spriteptr);
 		}
 #endif
-		if (banner.y != banner.target) {
+		if (banner.y != banner.target)
+		{
 			// if "Get Ready" banner visible....
-			if (!banner.speed) {
+			if (!banner.speed)
+			{
 				// player has not flapped yet - keep waiting
 				if (ctrlstate.pressed)
 				{
 					// start the game
 					banner.speed = 2;
-					bird->gravity = _gravity;
+					bird->gravity = bird->basegravity;
 					pipe.active = 1;
 					score.score = 0;
 					#ifdef testbird
@@ -426,7 +554,7 @@ uint16_t playgame(bird_t* bird)
 		{
 			pipe.speed	= 0;
 			pipe.active = 0;
-			bird->gravity = _gravity - 2;
+//			bird->gravity = _gravity - 2;
 			// shake pipes and flash a red flash
 			// TODO: shake_pipes()
 			// TODO: flash_screen()
@@ -451,22 +579,12 @@ uint16_t playgame(bird_t* bird)
 			bird->gravity = 0;
 			if (bird->y > _floor)
 				bird->y = _floor;
+			// wait for the banner to arrive at the target Y location
 			do {
 				spriteptr = update_banner(&banner, spriteptr);
 				spriteptr = update_bird(bird, spriteptr);
-				#ifdef debug
-		dbout[0].score = ctrlstate.current;
-		dbout[1].score = ctrlstate.last;
-		dbout[2].score = ctrlstate.pressed;
-		dbout[3].score = ctrlstate.released;
-		dbout[4].score = banner.speed;
-		for (d=0 ; d<5 ; d++)
-		{
-			spriteptr = update_scoreboard(&dbout[d], spriteptr);
-		}
-#endif
 				endframe(&spriteptr);
-			} while (!ctrlstate.released || banner.speed);
+			} while (banner.speed);
 			return score.score;
 		}
 	// dev/debug code - dont forget to pull this out
@@ -492,13 +610,7 @@ uint16_t playgame(bird_t* bird)
 		#endif
 		spriteptr = update_bird(bird,spriteptr);
 		lastfloor = pipe.floor;
-		#ifdef profiling
-		VERA.display.border = 14;
-		endframe();
-		VERA.display.border = 1;
-		#else
 		endframe(&spriteptr);
-		#endif
 	}
 }
 
@@ -509,14 +621,17 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 	banner_t		banner;
 	banner_t		report;
 	uint8_t*		spriteptr;
-	
-	uint8_t			f = 60;
+
+	int16_t			scorediff = p_score;
+	int16_t			y = 240;
+	int8_t			vy = -6;
+	uint8_t			f = 0;
+	uint8_t			done = 0;
 	
 	set_medalcolor(0, p_hiscore); // hide the medal until the score is tallied
-	set_medalcolor(p_score, p_hiscore);
 	init_scoreboard(&score, _bannerx + _hiscoreoffsetx, _hiscoreoffsety, SB_right, SB_decimal);
 	init_scoreboard(&hiscore, _bannerx + _hiscoreoffsetx, _hiscoreoffsety + _hiscorespacing, SB_right, SB_decimal);
-	score.score   = p_score;
+	score.score   = 0;
 	hiscore.score = p_hiscore;
 	
 	init_banner(&banner,BANNER_GAMEOVER,_bannertitlespec,BANNER_1x3);
@@ -527,7 +642,6 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 
 	init_banner(&report,BANNER_REPORT,_bannerreportspec,BANNER_2x3);
 	report.x = _bannerx;
-	report.y = _reporty;
 	report.target = _reporty;
 	report.speed  = 0;	// due to sprite priority issues, it is not
 						// beneficial to use the auto-move feature
@@ -538,12 +652,49 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore)
 	ctrlstate.pressed  = 0;
 	ctrlstate.last     = 0xffff;
 	ctrlstate.current	= 0;
-	
-	while ((! ctrlstate.released) || f > 0 )
-//	while (1)
+
+	while (! done)
 	{
-		if (f > 0)
-			--f;
+		++f;
+		if (report.y != _reporty)
+		{
+			// report card is moving onto the screen...
+			report.y += vy;
+			if (report.y < _reporty)
+				report.y = _reporty;
+			score.y = report.y + _hiscoreoffsety;
+			hiscore.y = score.y + _hiscorespacing;
+		}
+		else if (scorediff)
+		{
+			if (! (f & 3))
+			{
+				// scoreboard is counting up to the player score
+				if (scorediff > 20)
+				{
+					score.score += 4;
+					scorediff -= 4;
+				}
+				else if (scorediff > 10)
+				{
+					score.score += 2;
+					scorediff -= 2;
+				}
+				else
+				{
+					++score.score;
+					--scorediff;
+				}
+				// if the score just finished counting,
+				// display the medal / NEW flags in the scorecard
+				if (!scorediff)
+					hiscore.score = set_medalcolor(p_score, p_hiscore);
+			}
+		}
+		else
+		{
+			done = (ctrlstate.released != 0);
+		}
 		spriteptr = update_scoreboard(&score, spriteptr);
 		spriteptr = update_scoreboard(&hiscore, spriteptr);
 		spriteptr = update_banner(&banner, spriteptr);
@@ -561,12 +712,16 @@ void endframe(uint8_t **spriteptr)
 {
 	uint8_t* s = *spriteptr;
 
+
 	// flag the current sprite as first unused
 	s[6] = 0xfe;
 	frameready=1;
+	VERA.display.border = 13;
 	update_sound(); // todo: make sound use the frameready mechanic
 					//       with the IRQ doing the --delay function
+	VERA.display.border = 0;
 	while (frameready) {}
+	VERA.display.border = 15;
 
 	// reset sprite pointer to first sprite
 	*spriteptr = &spriteregs[0][0];
@@ -581,7 +736,7 @@ void irq(void)
 		// signal beginning of next frame to main program
 		frameready=0;
 	}
-	SETROMBANK = 0;	
+	SETROMBANK = 0;
 	asm("jmp (_SystemIRQ)");
 }
 
@@ -590,7 +745,8 @@ static const uint8_t palette[128] =
 {
   // background palette
   0xbc,0x06, 0x00,0x00, 0xff,0x0f, 0xf0,0x00, 0xc0,0x00, 0x80,0x00, 0xd4,0x0f, 0xe5,0x0e,
-  0x81,0x0f, 0x45,0x0b, 0x78,0x0f, 0xfb,0x0f, 0xb4,0x0d, 0x4f,0x0e, 0xed,0x0f, 0x33,0x0f,
+  0x81,0x0f, 0x45,0x0b, 0x78,0x0f, 0xfb,0x0f, 0xb4,0x0d, 0xf0,0x0f, 0xed,0x0f, 0x33,0x0f,
+//  0x81,0x0f, 0x45,0x0b, 0x78,0x0f, 0xfb,0x0f, 0xb4,0x0d, 0x4f,0x0f, 0xed,0x0f, 0x33,0x0f,
 
   // tile palette
   0xff,0x00, 0xfd,0x0e, 0xc7,0x07, 0xb7,0x06, 0xd7,0x07, 0xdc,0x09, 0xdb,0x0b, 0xdc,0x0b,
@@ -640,13 +796,40 @@ static const sfxframe smack[] = {
 	{0x08, YM_KeyUp, 0}, {0,0,0xff}
 };
 
+static const param_t params[5] = {
+
+		{ 8, 4, 4, -60 },	// wimp
+		{ 8, 4, 6, -90 },	// standard
+		{ 8, 3, 5, -64 },	// hard
+		{ 9, 3, 7, -77 },	// brutal
+		{ 9, 2, 4, -55 }	// dark souls
+};
+
+static const int16_t optionx[N_OPTIONS] = { 
+	96, 130, 130, 130, 130, 130
+};
+
+static const int16_t optiony[N_OPTIONS] = { 
+	100, 120, 140, 160, 180, 200
+};
+	
+static const int16_t optionaddr[N_OPTIONS] = {
+	SPRadr(_tilebase + 1 * 16 * 16 /2),	// 1
+	SPRadr(_tilebase + 2 * 16 * 16 /2),	// 2
+	SPRadr(_tilebase + 3 * 16 * 16 /2),	// 3
+	SPRadr(_tilebase + 4 * 16 * 16 /2),	// 4
+	SPRadr(_tilebase + 9 * 16 * 16 /2),	// 9
+	SPRadr(_tilebase)					// 0
+};
+
 void main()
 {
 
 	bird_t bird;
 
+	static uint8_t difficulty = 1;
 	static uint16_t score = 0;
-	static uint16_t hiscore = 0;
+	static uint16_t hiscore[5] = {0,0,0,0,0};
 
 	SystemIRQ = IRQvector;
 	init_game();
@@ -669,13 +852,13 @@ void main()
 */
 
 	while (1) {
-		titlescreen(&bird);
+		difficulty = titlescreen(&bird, difficulty);
 		score = playgame(&bird);
-		gameover(&bird, score, hiscore);
+		gameover(&bird, score, hiscore[difficulty]);
 		// wait to actually update the hiscore so that the
 		// gameover() routine can detect a new hi score
-		if (score >= hiscore)
-			hiscore = score;
+		if (score >= hiscore[difficulty])
+			hiscore[difficulty] = score;
 	}
 	// exit from the game (don't think I'm going to implement this)
 

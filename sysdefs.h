@@ -10,38 +10,60 @@
 
 //#define R39
 //#define debug
+#define profiling
 
 // Game Parameters
 #define _ceiling		-64
 #define _floor			(14 * 16 - 19) // row 14, 16px per tile, 19 for bird hitbox
-#define _gravity 7
-#define _birdflapthrust -77
 
-#define _birdstartx 72
-#define _birdstarty 120
-#define _birdanimspeed 4
-#define _birdanimsteps 1
-#define _birdanimframes 3
-#define _birdrotatedelay 6
+/*
+#define _gravity 4 // 7
+#define _birdflapthrust -64 // -77
+*/
+//#define _gravity 6 // 7
+//#define _birdflapthrust -90 // -77
+
+#define _birdstartx			72
+#define _birdstarty			120
+#define _birdanimspeed		4
+#define _birdanimsteps		1
+#define _birdanimframes		3
+#define _birdrotatedelay	6
+#define _birdheight			16
+
+#define _pipespacing	8
 
 #define _bannerx			(320/2 - (64*3/2))
 #define _bannery			4
 #define _reporty			(_bannery + 64)
 #define _hiscoreoffsetx		(64*3-23)
-#define _hiscoreoffsety		106
+#define _hiscoreoffsety		38
 #define _hiscorespacing		46
 #define _bannertitlespec	0xf2 // hhwwpppp
 #define _bannerreportspec	0xf3
+#define _banneroptionspec	0x72 // 64x16, palette 2
+#define _banneropnumspec	0x50 // 16x16, palette 0
 
 #define BANNER_1x3			0x13
 #define BANNER_2x3			0x23
 #define	BANNER_3x3			0x33
+#define BANNER_1x2			0x12
+#define BANNER_1x1			0x11
 
 #define BANNER_TITLE		SPRadr(_bannerbase)
 #define BANNER_GETREADY		SPRadr(_bannerbase + 3 * 64 * 64 / 2)
 #define BANNER_GAMEOVER		SPRadr(_bannerbase + 6 * 64 * 64 / 2)
 #define BANNER_REPORT		SPRadr(_reportbase)
-//#define BANNER_REPORT		SPRadr(BANNER_GAMEOVER + 3 * 64 * 64 / 2)
+#define BANNER_DIFFICULTY	SPRadr(_difficultbase)
+#define BANNER_WIMPY		SPRadr(_difficultbase + (2 * 64 x 16 / 2 ))
+#define BANNER_STANDARD		SPRadr(_difficultbase + (4 * 64 x 16 / 2 ))
+#define BANNER_HARD			SPRadr(_difficultbase + (6 * 64 x 16 / 2 ))
+#define BANNER_BRUTAL		SPRadr(_difficultbase + (8 * 64 x 16 / 2 ))
+#define BANNER_DARKSOULS	SPRadr(_difficultbase + (10 * 64 x 16 / 2 ))
+
+#define N_OPTIONS			6
+#define BANNER_OPTION(I)	(SPRadr(_difficultbase + ( (I) * (64 * 16))))
+#define BANNER_DIGIT(I)		(SPRadr(_digitbase))
 
 // VRAM layout
 #define _mapbase  	((unsigned long)0x04000)
@@ -52,10 +74,11 @@
 #define _birdbase		_spritebase
 #define _bannerbase		((_spritebase) + 0x1800)
 #define _reportbase		((_bannerbase) + 0x4800)
+#define _difficultbase	((_reportbase) + 0x4800) // 0x12800
 #define _digitbase		(_tilebase) // 0-f are the first 16 tiles
 
 #define _tilebytes	0x80
-#define _maxsprites 32
+#define _maxsprites 64
 #define _fmvoices	8
 #define _psgvoices	16
 
@@ -98,7 +121,7 @@
 #define SPRhi(a)	((a)>>13 & 0x0f)
 #define SPRadr(a)	(SPRlo(a) | SPRhi(a) << 8)
 
-// Macros to calculate Sprite ADDR step from size in bytes
+// Macro to calculate Sprite ADDR step from size in bytes
 #define SPRaddrstep(BYTES)	(((BYTES)>>5)&0xff)
 
 #endif

@@ -19,6 +19,6 @@ typedef struct banner_t {
 
 extern void init_banner(banner_t *banner, uint16_t addr, uint8_t tilespec, uint8_t layout);
 extern uint8_t *update_banner(banner_t *banner, uint8_t *spregs);
-extern void set_medalcolor(const uint16_t score, const uint16_t hiscore);
+extern int16_t set_medalcolor(const uint16_t score, const uint16_t hiscore);
 
 #endif

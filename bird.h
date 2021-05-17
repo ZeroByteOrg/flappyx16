@@ -17,8 +17,11 @@ typedef struct bird_t
     frame,		// current animation frame
     animspeed,	// frames to pause between animation frames
     animsteps,	// number of frames to advance for each animation frame
-    animdelay,	// frame delay for animation speed
-    gravity;
+    animdelay;	// frame delay for animation speed
+  int8_t
+	basegravity,
+    gravity,
+    thrust;
 } bird_t;
 
 extern void flap_bird(bird_t *bird);

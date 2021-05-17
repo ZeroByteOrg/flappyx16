@@ -9,6 +9,9 @@ typedef struct controller_t {
     current,	// current state ( 1 = off, 0 = pressed )
     pressed,    // 1 = pressed on this frame, 0 = not pressed this frame
     released;	// 1 = released on this frame, 0 = not released this frame
+   uint8_t
+    enabled,
+    key;		// holds the value of the key if pressed this frame
 } controller_t;
 
 typedef struct joy_t {

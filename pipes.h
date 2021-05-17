@@ -3,10 +3,6 @@
 
 #include <stdint.h>
 
-#define _pipespeed		9
-#define _pipespacing	8
-#define _pipegap		3
-
 #define TILE_gfx			0x10
 #define TILE_space			0x1f
 
@@ -25,6 +21,7 @@ typedef struct pipe_t {
 	height,
 	active,
 	speed,
+	gapsize,
 	h1,
 	h2;
   int16_t
