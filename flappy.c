@@ -20,6 +20,7 @@
 
 static uint8_t	spriteregs[_maxsprites][8]; // shadow registers
 static uint8_t	frameready;
+static uint8_t  frame;
 static uint16_t SystemIRQ;
 static pipe_t	pipe;
 
@@ -56,6 +57,7 @@ static const sfxframe ding[];
 static const sfxframe fall[];
 static const sfxframe flap[];
 static const sfxframe smack[];
+static const sfxframe darksouls[];
 static const int16_t optionx[N_OPTIONS];
 static const int16_t optiony[N_OPTIONS];	
 static const int16_t optionaddr[N_OPTIONS];
@@ -89,6 +91,8 @@ void init_game()
 	#include "dingsound.inc" // will switch this to a load instead...
 	#include "fallsound.inc"
 	#include "flapsound.inc"
+	#include "smacksound.inc"
+	#include "darksoulsound.inc"
 	
 	// disable sprites and layers while we load graphics / init screen
 	VERA.display.video = 0x01; 
@@ -132,9 +136,10 @@ void init_game()
 
 	clear_YM(&fmvoice);
 	patchYM((uint8_t*)&dingsound,0);
-	patchYM((uint8_t*)&dingsound,1);
+	patchYM((uint8_t*)&smacksound,1);
 	patchYM((uint8_t*)&fallsound,2);
 	patchYM((uint8_t*)&flapsound,3);
+	patchYM((uint8_t*)&darksoulsound,4);
 	
 	// initialize the RNG
 	srand(VIA1.t1_lo);
@@ -385,46 +390,61 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 		switch (ctrlstate.key)
 		{
 		case '1':
+		{
+			if (difficulty != 0)
 			{
 				difficulty = 0;
 				options[5].target = 240;
 				++noinput;
-				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
-				break;
+				PLAYSFX(&fmvoice[3],(sfxframe*)&flap);
 			}
+			break;
+		}
 		case '2':
+		{
+			if (difficulty != 1)
 			{
 				difficulty = 1;
 				options[5].target = 240;
 				++noinput;
 				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
-				break;
 			}
+			break;
+		}
 		case '3':
+		{
+			if (difficulty != 2)
 			{
 				difficulty = 2;
 				options[5].target = 240;
 				++noinput;
 				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
-				break;
 			}
+			break;
+		}
 		case '4':
+		{
+			if (difficulty != 3)
 			{
 				difficulty = 3;
 				options[5].target = 240;
 				++noinput;
-				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
-				break;
+				PLAYSFX(&fmvoice[1],(sfxframe*)&smack);
 			}
+			break;
+		}
 		case '9':
+		{
+			if (difficulty != 4)
 			{
 				difficulty = 4;
 				options[5].target = optiony[5];
 				++noinput;
-				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
-				break;
+				PLAYSFX(&fmvoice[4],(sfxframe*)&darksouls);
 			}
+			break;
 		}
+		} // end of switch(ctrlstate.key)
 		if (ctrlstate.current & 0x20)  // if select is pressed
 		{
 			++darksoulcounter;
@@ -564,7 +584,7 @@ uint16_t playgame(bird_t* bird)
 			// skip fall sound if bird near ground
 			if (bird->y < _floor - 4)
 			{
-				//PLAYSFX(&fmvoice[1],(sfxframe*)&smack);
+				PLAYSFX(&fmvoice[1],(sfxframe*)&smack);
 				PLAYSFX(&fmvoice[2],(sfxframe*)&fall);
 			}
 			while (bird->y < _floor) {
@@ -572,7 +592,7 @@ uint16_t playgame(bird_t* bird)
 				spriteptr = update_bird(bird, spriteptr);
 				endframe(&spriteptr);
 			}
-			//PLAYSFX(&fmvoice[1],(sfxframe*)&smack);
+			PLAYSFX(&fmvoice[1],(sfxframe*)&smack);
 			bird->vy = 0;
 			bird->gravity = 0;
 			if (bird->y > _floor)
@@ -732,6 +752,7 @@ void endframe(uint8_t **spriteptr)
 	// reset sprite pointer to first sprite
 	*spriteptr = &spriteregs[0][0];
 	check_input();
+	++frame;
 }
 
 void irq(void)
@@ -799,12 +820,29 @@ static const sfxframe flap[] = {
 };
 
 static const sfxframe smack[] = {
+	{0x08, YM_KeyUp, 0}, {0x28, 0x24, 0}, {0x08, YM_KeyDn, 6},
 	{0x08, YM_KeyUp, 0}, {0,0,0xff}
+};
+/*
+static const sfxframe smack[] = {
+	{0x08, YM_KeyUp, 0}, {0x28, 0x34, 0}, {0x08, YM_KeyDn, 1},
+	{0x28, 0x24, 1},{0x28, 0x34, 1},{0x28, 0x24, 1},
+	{0x28, 0x34, 1},{0x28, 0x24, 1},
+	{0x08, YM_KeyUp, 0}, {0,0,0xff}
+};
+*/
+
+static const sfxframe darksouls[] = {
+	{0x08, YM_KeyUp, 0}, {0x28, 0x2d, 0}, {0x08, YM_KeyDn, 6},
+	{0x08, YM_KeyUp, 0}, {0x28, 0x2e, 0}, {0x08, YM_KeyDn, 6},
+	{0x08, YM_KeyUp, 0}, {0x28, 0x2f, 0}, {0x08, YM_KeyDn, 6},
+	{0x08, YM_KeyUp, 0}, {0x28, 0x2e, 0}, {0x08, YM_KeyDn, 30},
+	{0x08, YM_KeyUp, 0}, {0, 0, 0xff}
 };
 
 static const param_t params[5] = {
 
-		{ 8, 4, 4, -60 },	// wimp
+		{ 8, 4, 4, -60 },	// wimpy
 		{ 8, 4, 6, -90 },	// standard
 		{ 8, 3, 5, -64 },	// hard
 		{ 9, 3, 7, -77 },	// brutal
