@@ -136,7 +136,7 @@ void init_game()
 
 	clear_YM(&fmvoice);
 	patchYM((uint8_t*)&dingsound,0);
-	patchYM((uint8_t*)&smacksound,1);
+	patchYM((uint8_t*)&smacksound,7);
 	patchYM((uint8_t*)&fallsound,2);
 	patchYM((uint8_t*)&flapsound,3);
 	patchYM((uint8_t*)&darksoulsound,4);
@@ -429,7 +429,7 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 				difficulty = 3;
 				options[5].target = 240;
 				++noinput;
-				PLAYSFX(&fmvoice[1],(sfxframe*)&smack);
+				PLAYSFX(&fmvoice[7],(sfxframe*)&smack);
 			}
 			break;
 		}
@@ -496,6 +496,7 @@ uint16_t playgame(bird_t* bird)
 	scoreboard_t score;
 	uint8_t *spriteptr;
 	uint16_t lastfloor;
+	int16_t crashy;
 
 #ifdef debug
 	scoreboard_t dbout[3];
@@ -525,6 +526,7 @@ uint16_t playgame(bird_t* bird)
 	lastfloor = _floor;
 	while (kbhit()) { cgetc(); }
 	endframe(&spriteptr);
+	crashy = _floor;
 	while (1) {
 //		if (kbhit()) {cgetc(); ctrlstate.pressed=1; }
 		// update game state
@@ -570,9 +572,11 @@ uint16_t playgame(bird_t* bird)
 		}
 		if (! check_bird(bird,pipe.ceiling,pipe.floor))
 		{
+			crashy = bird->y;
 			pipe.speed	= 0;
 			pipe.active = 0;
 //			bird->gravity = _gravity - 2;
+			bird->gravity = 3;
 			// shake pipes and flash a red flash
 			// TODO: shake_pipes()
 			// TODO: flash_screen()
@@ -583,16 +587,17 @@ uint16_t playgame(bird_t* bird)
 			banner.speed = 3;
 			// skip fall sound if bird near ground
 			if (bird->y < _floor - 4)
-			{
-				PLAYSFX(&fmvoice[1],(sfxframe*)&smack);
 				PLAYSFX(&fmvoice[2],(sfxframe*)&fall);
-			}
+			PLAYSFX(&fmvoice[7],(sfxframe*)&smack);
 			while (bird->y < _floor) {
 				spriteptr = update_banner(&banner, spriteptr);
 				spriteptr = update_bird(bird, spriteptr);
 				endframe(&spriteptr);
 			}
-			PLAYSFX(&fmvoice[1],(sfxframe*)&smack);
+			// don't play smack sound twice if bird hit pipe
+			// near the ground
+			if (crashy < _maxcrashy)
+				PLAYSFX(&fmvoice[7],(sfxframe*)&smack);
 			bird->vy = 0;
 			bird->gravity = 0;
 			if (bird->y > _floor)
@@ -820,7 +825,8 @@ static const sfxframe flap[] = {
 };
 
 static const sfxframe smack[] = {
-	{0x08, YM_KeyUp, 0}, {0x28, 0x24, 0}, {0x08, YM_KeyDn, 6},
+	{0x08, YM_KeyUp, 0}, { 0x0f, 0x81, 0 },
+	{0x28, 0x24, 0}, {0x08, YM_KeyDn, 3},
 	{0x08, YM_KeyUp, 0}, {0,0,0xff}
 };
 /*

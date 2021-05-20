@@ -30,6 +30,7 @@
 #define _birdanimframes		3
 #define _birdrotatedelay	6
 #define _birdheight			16
+#define _maxcrashy		100
 
 #define _pipespacing	8
 
