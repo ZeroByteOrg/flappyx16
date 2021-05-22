@@ -46,6 +46,7 @@
 #define _bannerreportspec	0xf3
 #define _banneroptionspec	0x72 // 64x16, palette 2
 #define _banneropnumspec	0x50 // 16x16, palette 0
+#define _bannersparklespec	0x53 // 16x16, palette 3
 
 #define BANNER_1x3			0x13
 #define BANNER_2x3			0x23
@@ -66,7 +67,8 @@
 
 #define N_OPTIONS			6
 #define BANNER_OPTION(I)	(SPRadr(_difficultbase + ( (I) * (64 * 16))))
-#define BANNER_DIGIT(I)		(SPRadr(_digitbase))
+//#define BANNER_DIGIT(I)		(SPRadr(_digitbase))
+#define BANNER_SPARKLE(I)	(SPRadr(_sparklebase + ((I) * _tilebytes)))
 
 // VRAM layout
 #define _mapbase  	((unsigned long)0x04000)
@@ -79,6 +81,7 @@
 #define _reportbase		((_bannerbase) + 0x4800)
 #define _difficultbase	((_reportbase) + 0x4800) // 0x12800
 #define _digitbase		(_tilebase) // 0-f are the first 16 tiles
+#define _sparklebase	((_tilebase) + _tilebytes * 24)
 
 #define _tilebytes	0x80
 #define _maxsprites 64
