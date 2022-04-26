@@ -453,7 +453,6 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 				if (difficulty > 3)
 					difficulty = 0;
 				++noinput;
-				options[5].target = 240;
 				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
 			}
 			if (darksoulcounter >= 180)
@@ -461,7 +460,7 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 				difficulty = 4;
 				options[5].target = optiony[5];
 				++noinput;
-				PLAYSFX(&fmvoice[4],(sfxframe*)&darksouls);
+				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
 				darksoulcounter = 0;
 			}
 		}
@@ -528,9 +527,6 @@ uint16_t playgame(bird_t* bird)
 	while (kbhit()) { cgetc(); }
 	endframe(&spriteptr);
 	crashy = _floor;
-	
-	score.score = 40;
-	
 	while (1) {
 //		if (kbhit()) {cgetc(); ctrlstate.pressed=1; }
 		// update game state
@@ -556,6 +552,7 @@ uint16_t playgame(bird_t* bird)
 					banner.speed = 2;
 					bird->gravity = bird->basegravity;
 					pipe.active = 1;
+					score.score = 0;
 					#ifdef testbird
 					autopilot = 1;
 					#endif
@@ -647,16 +644,13 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 	banner_t		banner;
 	banner_t		report;
 	banner_t		modelabel;
-	banner_t		sparkle;
 	uint8_t*		spriteptr;
-	int16_t			twinklex, twinkley;
 
 	int16_t			scorediff = p_score;
 	int16_t			y = 240;
 	int8_t			vy = -6;
 	uint8_t			f = 0;
 	uint8_t			done = 0;
-	uint8_t			pikapika = 0;
 	
 	set_medalcolor(0, p_hiscore); // hide the medal until the score is tallied
 	init_scoreboard(&score, _bannerx + _hiscoreoffsetx, _hiscoreoffsety, SB_right, SB_decimal);
@@ -681,11 +675,7 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 	modelabel.x = _bannerx + _modeoffsetx;
 	modelabel.target=_reporty + _modeoffsety;
 	modelabel.speed = 0;
-	
-	init_banner(&sparkle, BANNER_SPARKLE(0), _bannersparklespec, BANNER_1x1);
-	sparkle.x = -16;
-	sparkle.y = -16;
-	
+
 	spriteptr = (uint8_t*)spriteregs;
 	ctrlstate.released = 0;
 	ctrlstate.pressed  = 0;
@@ -694,6 +684,7 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 
 	while (! done)
 	{
+		++f;
 		if (report.y != _reporty)
 		{
 			// report card is moving onto the screen...
@@ -706,7 +697,7 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 		}
 		else if (scorediff)
 		{
-			if (! (frame & 3))
+			if (! (f & 3))
 			{
 				// scoreboard is counting up to the player score
 				if (scorediff > 20)
@@ -727,32 +718,12 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 				// if the score just finished counting,
 				// display the medal / NEW flags in the scorecard
 				if (!scorediff)
-				{
 					hiscore.score = set_medalcolor(p_score, p_hiscore);
-					if (p_score >= 10)
-						pikapika = 1;
-				}
 			}
 		}
 		else
 		{
 			done = (ctrlstate.released != 0);
-		}
-		if (pikapika) {
-			f = frame >> 3; // animate the sparkle every 8th frame
-			f &= 3;			// 4 animation frames
-			if (!f) {
-				// randomize these later
-				sparkle.x = (uint8_t)rand()%38 + 92;
-				sparkle.y = (uint8_t)rand()%38 + 118;
-			}
-			else {
-				if (f == 3)
-					sparkle.addr = BANNER_SPARKLE(1);
-				else
-					sparkle.addr = BANNER_SPARKLE(f);
-				spriteptr = update_banner(&sparkle, spriteptr);
-			}
 		}
 		spriteptr = update_scoreboard(&score, spriteptr);
 		spriteptr = update_scoreboard(&hiscore, spriteptr);
@@ -807,6 +778,7 @@ static const uint8_t palette[128] =
   // background palette
   0xbc,0x06, 0x00,0x00, 0xff,0x0f, 0xf0,0x00, 0xc0,0x00, 0x80,0x00, 0xd4,0x0f, 0xe5,0x0e,
   0x81,0x0f, 0x45,0x0b, 0x78,0x0f, 0xfb,0x0f, 0xb4,0x0d, 0xf0,0x0f, 0xed,0x0f, 0x33,0x0f,
+//  0x81,0x0f, 0x45,0x0b, 0x78,0x0f, 0xfb,0x0f, 0xb4,0x0d, 0x4f,0x0f, 0xed,0x0f, 0x33,0x0f,
 
   // tile palette
   0xff,0x00, 0xfd,0x0e, 0xc7,0x07, 0xb7,0x06, 0xd7,0x07, 0xdc,0x09, 0xdb,0x0b, 0xdc,0x0b,
@@ -829,44 +801,51 @@ static uint8_t frame = 0;
 
 // SFX sequence for the ding sound
 static const sfxframe ding[] = {
-	{0x28, 0x76, 0}, {0x08, YM_KeyUp, 0}, {0x08, YM_KeyDn, 1},
-	{0x08, YM_KeyUp, 7}, {0x28, 0x7c, 0}, {0x08, YM_KeyDn, 1},
+	{0x28, 0x79, 0}, {0x08, YM_KeyUp, 0}, {0x08, YM_KeyDn, 1},
+	{0x08, YM_KeyUp, 7}, {0x28, 0x7e, 0}, {0x08, YM_KeyDn, 1},
 	{0x08, YM_KeyUp, 0x00}, {0,0,0xff}
 };
 
 static const sfxframe fall[] = {
-	{0x28, 0x5c, 0}, {0x08, YM_KeyUp, 0}, {0x08, YM_KeyDn, 4},
-	{0x30, 0x20, 0}, {0x28, 0x5a, 3}, {0x30, 0x00, 2}, {0x30, 0x20, 0},
-	{0x28, 0x59, 2}, {0x30, 0x00, 2}, {0x30, 0x20, 0}, {0x28, 0x58, 2},
-	{0x30, 0x00, 2}, {0x30, 0x20, 0}, {0x28, 0x56, 2}, {0x30, 0x00, 2},
+	{0x28, 0x5e, 0}, {0x08, YM_KeyUp, 0}, {0x08, YM_KeyDn, 4},
+	{0x30, 0x20, 0}, {0x28, 0x5d, 3}, {0x30, 0x00, 2}, {0x30, 0x20, 0},
+	{0x28, 0x5c, 2}, {0x30, 0x00, 2}, {0x30, 0x20, 0}, {0x28, 0x5a, 2},
+	{0x30, 0x00, 2}, {0x30, 0x20, 0}, {0x28, 0x59, 2}, {0x30, 0x00, 2},
 	{0x08, YM_KeyUp, 0},
-	{0x30, 0x20, 0}, {0x28, 0x55, 2}, {0x30, 0x00, 2}, {0x30, 0x20, 0},
-	{0x28, 0x54, 2}, {0x30, 0x00, 2}, {0x30, 0x20, 0}, {0x28, 0x52, 2},
-	{0x30, 0x00, 2}, {0x28, 0x51, 2}, {0x28, 0x50, 1}, {0x28, 0x4e, 1},
-	{0x28, 0x4c, 1},
+	{0x30, 0x20, 0}, {0x28, 0x58, 2}, {0x30, 0x00, 2}, {0x30, 0x20, 0},
+	{0x28, 0x56, 2}, {0x30, 0x00, 2}, {0x30, 0x20, 0}, {0x28, 0x55, 2},
+	{0x30, 0x00, 2}, {0x28, 0x54, 2}, {0x28, 0x52, 1}, {0x28, 0x51, 1},
+	{0x28, 0x50, 1},
 	{0,0,0xff}
 };
 
 static const sfxframe flap[] = {
-	{0x08, YM_KeyUp, 0}, {0x28, 0x21, 0}, {0x08, YM_KeyDn, 4},
+	{0x08, YM_KeyUp, 0}, {0x28, 0x24, 0}, {0x08, YM_KeyDn, 4},
 	{0x08, YM_KeyUp, 0}, {0,0,0xff}
 };
 
 static const sfxframe smack[] = {
 	{0x08, YM_KeyUp, 0}, { 0x0f, 0x81, 0 },
-	{0x28, 0x24, 0}, {0x08, YM_KeyDn, 3},
+	{0x28, 0x26, 0}, {0x08, YM_KeyDn, 3},
 	{0x08, YM_KeyUp, 0}, {0,0,0xff}
 };
+/*
+static const sfxframe smack[] = {
+	{0x08, YM_KeyUp, 0}, {0x28, 0x34, 0}, {0x08, YM_KeyDn, 1},
+	{0x28, 0x24, 1},{0x28, 0x34, 1},{0x28, 0x24, 1},
+	{0x28, 0x34, 1},{0x28, 0x24, 1},
+	{0x08, YM_KeyUp, 0}, {0,0,0xff}
+};
+*/
 
 static const sfxframe darksouls[] = {
-	{0x08, YM_KeyUp, 0}, {0x28, 0x2d, 0}, {0x08, YM_KeyDn, 6},
-	{0x08, YM_KeyUp, 0}, {0x28, 0x2e, 0}, {0x08, YM_KeyDn, 6},
-	{0x08, YM_KeyUp, 0}, {0x28, 0x2f, 0}, {0x08, YM_KeyDn, 6},
-	{0x08, YM_KeyUp, 0}, {0x28, 0x2e, 0}, {0x08, YM_KeyDn, 30},
+	{0x08, YM_KeyUp, 0}, {0x28, 0x30, 0}, {0x08, YM_KeyDn, 6},
+	{0x08, YM_KeyUp, 0}, {0x28, 0x31, 0}, {0x08, YM_KeyDn, 6},
+	{0x08, YM_KeyUp, 0}, {0x28, 0x32, 0}, {0x08, YM_KeyDn, 6},
+	{0x08, YM_KeyUp, 0}, {0x28, 0x31, 0}, {0x08, YM_KeyDn, 30},
 	{0x08, YM_KeyUp, 0}, {0, 0, 0xff}
 };
 
-// game difficulty parameters
 static const param_t params[5] = {
 
 		{ 8, 4, 4, -60 },	// wimpy
@@ -876,18 +855,14 @@ static const param_t params[5] = {
 		{ 9, 2, 4, -55 }	// dark souls
 };
 
-// x coordinates for the menu option items
 static const int16_t optionx[N_OPTIONS] = { 
 	96, 130, 130, 130, 130, 130
 };
 
-// y coordinates for the menu option items
 static const int16_t optiony[N_OPTIONS] = { 
 	100, 120, 140, 160, 180, 200
 };
-
-// VRAM locations for the menu option number sprites
-// (needed because we use banners instead of scoreboards)
+	
 static const int16_t optionaddr[N_OPTIONS] = {
 	SPRadr(_tilebase),			// 0
 	SPRadr(_tilebase + 1 * 16 * 16 /2),	// 1
@@ -901,14 +876,30 @@ void main()
 {
 
 	bird_t bird;
-	uint16_t score;
 
 	static uint8_t difficulty = 1;
+	static uint16_t score = 0;
 	static uint16_t hiscore[5] = {0,0,0,0,0};
 
 	SystemIRQ = IRQvector;
 	init_game();
 	clear_screen();
+/*
+	YMNOTE(0x76,0);
+	endframe();
+	YMKEYUP(0);
+	endframe();
+	endframe();
+	endframe();
+	endframe();
+	endframe();
+	endframe();
+	endframe();
+	endframe();
+	YMNOTE(0x7c,0);
+	endframe();
+	YMKEYUP(0);
+*/
 
 	while (1) {
 		difficulty = titlescreen(&bird, difficulty);
