@@ -1,1 +1,1 @@
-../../vopl-demo/tools/img2tileset.py
+/home/barry/bin/img2tileset.py

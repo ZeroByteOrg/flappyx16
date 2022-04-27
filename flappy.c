@@ -18,11 +18,20 @@
 
 #define IRQvector	(*(uint16_t*)IRQVECTOR)
 
+
+
 static uint8_t	spriteregs[_maxsprites][8]; // shadow registers
 static uint8_t	frameready;
 static uint8_t  frame;
 static uint16_t SystemIRQ;
 static pipe_t	pipe;
+
+static struct colorstate {
+	uint8_t	current;
+	uint8_t end;
+	uint8_t delay;
+	uint8_t active;
+} colorstate;
 
 typedef struct param_t {
 	uint8_t
@@ -32,10 +41,16 @@ typedef struct param_t {
 		gravity,
 		thrust;
 	} param_t;
+
+typedef struct pal_t {
+	uint16_t	c[_numcolors];
+} pal_t;
+
 	
 static const param_t params[5];
+static const pal_t* palettes[RAMP_STEPS];
 
-static const uint8_t	palette[128];
+//static const uint8_t palette[128];
 
 void init_game();
 uint8_t titlescreen(bird_t* bird, uint8_t difficulty);
@@ -78,6 +93,16 @@ void load_vera(const unsigned long address, const uint8_t *data, uint16_t size)
   }
 }
 
+void load(const char* filename, const uint8_t bank, const uint16_t address)
+{
+	uint8_t b = SETRAMBANK;
+	SETRAMBANK = bank;
+	cbm_k_setnam(filename);
+	cbm_k_setlfs(0,8,0);
+	cbm_k_load(0,address);
+	SETRAMBANK = b;
+}
+
 void vload(const char* filename, const uint8_t bank, const uint16_t address)
 {
 	cbm_k_setnam(filename);
@@ -87,6 +112,8 @@ void vload(const char* filename, const uint8_t bank, const uint16_t address)
 
 void init_game()
 {
+	uint8_t i;
+	
 	// these are the patches for the YM SFX
 	#include "dingsound.inc" // will switch this to a load instead...
 	#include "fallsound.inc"
@@ -106,8 +133,18 @@ void init_game()
 	vload("banners.bin",VRAMhi(_bannerbase),VRAMlo(_bannerbase));
 	vload("report.bin",VRAMhi(_reportbase),VRAMlo(_reportbase));
 	vload("difficulty.bin",VRAMhi(_difficultbase),VRAMlo(_difficultbase));
-	load_vera(_PALREGS,palette,sizeof(palette));
-
+	load("ramps.bin",1,0xa000);
+	for (i=0 ; i < RAMP_STEPS * 2 ; i++)
+	{
+		palettes[i] = (pal_t*)(_rampbase + sizeof(pal_t) * i);
+	}
+	SETRAMBANK = 1;
+	load_vera(_PALREGS,(uint8_t*)palettes[PAL_BLACK],sizeof(pal_t));
+	colorstate.delay = 0;
+	colorstate.current = PAL_BLACK;
+	colorstate.end = PAL_NORMALB;
+	colorstate.active = 0;
+	
 	// set display to 320x240
 	VERA.display.hscale		= 64;
 	VERA.display.vscale		= 64;
@@ -256,6 +293,29 @@ void update_screen(const int16_t scroll)
 		spriteregs[r][7] = 0;
 		r += 1;
 	}
+	if (colorstate.active)
+	{
+		if (colorstate.delay == 0)
+		{
+			load_vera(_PALREGS,(uint8_t*)palettes[colorstate.current],sizeof(pal_t));
+			if (colorstate.current == colorstate.end)
+			{
+				colorstate.active = 0;
+			}
+			else
+			{
+				if (colorstate.end < colorstate.current)
+					--colorstate.current;
+				else
+					++colorstate.current;
+				colorstate.delay = RAMP_SPEED;
+			}
+		}
+		else
+		{
+			--colorstate.delay;
+		}
+	}
 	VERA.address=VL;
 	VERA.address_hi = VH;
 	VERA.control = VC;
@@ -346,7 +406,13 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 	ctrlstate.current	= 0;
 	ctrlstate.last		= 0;
 	ctrlstate.released	= 0;
-	
+	for (i=0 ; i<16 ; i++)
+	{
+		endframe(spriteptr);
+	}
+	colorstate.current	= PAL_BLACK;
+	colorstate.end		= PAL_NORMALB;
+	colorstate.active	= 1;
 	while (!ctrlstate.pressed)
 	{
 		f++;
@@ -396,7 +462,7 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 				difficulty = 0;
 				options[5].target = 240;
 				++noinput;
-				PLAYSFX(&fmvoice[3],(sfxframe*)&flap);
+				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
 			}
 			break;
 		}
@@ -429,7 +495,7 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 				difficulty = 3;
 				options[5].target = 240;
 				++noinput;
-				PLAYSFX(&fmvoice[7],(sfxframe*)&smack);
+				PLAYSFX(&fmvoice[0],(sfxframe*)&ding);
 			}
 			break;
 		}
@@ -529,8 +595,6 @@ uint16_t playgame(bird_t* bird)
 	endframe(&spriteptr);
 	crashy = _floor;
 	
-	score.score = 40;
-	
 	while (1) {
 //		if (kbhit()) {cgetc(); ctrlstate.pressed=1; }
 		// update game state
@@ -578,11 +642,13 @@ uint16_t playgame(bird_t* bird)
 			crashy = bird->y;
 			pipe.speed	= 0;
 			pipe.active = 0;
-//			bird->gravity = _gravity - 2;
 			bird->gravity = 3;
 			// shake pipes and flash a red flash
 			// TODO: shake_pipes()
 			// TODO: flash_screen()
+			colorstate.current	= PAL_RED;
+			colorstate.end		= PAL_NORMALR;
+			colorstate.active	= 1;
 			init_banner(&banner,BANNER_GAMEOVER,_bannertitlespec,BANNER_1x3);
 			banner.x = _bannerx;
 			banner.y = -64;
@@ -649,7 +715,6 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 	banner_t		modelabel;
 	banner_t		sparkle;
 	uint8_t*		spriteptr;
-	int16_t			twinklex, twinkley;
 
 	int16_t			scorediff = p_score;
 	int16_t			y = 240;
@@ -742,17 +807,17 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 			f = frame >> 3; // animate the sparkle every 8th frame
 			f &= 3;			// 4 animation frames
 			if (!f) {
-				// randomize these later
-				sparkle.x = (uint8_t)rand()%38 + 92;
-				sparkle.y = (uint8_t)rand()%38 + 118;
+				//randomize the location of the sparkle for each cycle
+				sparkle.x = (uint8_t)rand()%32 + 96;
+				sparkle.y = (uint8_t)rand()%32 + 107;
+				// first frame is blank, so don't bother rendering
+
 			}
-			else {
-				if (f == 3)
-					sparkle.addr = BANNER_SPARKLE(1);
-				else
-					sparkle.addr = BANNER_SPARKLE(f);
-				spriteptr = update_banner(&sparkle, spriteptr);
-			}
+			if (f == 3)
+				sparkle.addr = BANNER_SPARKLE(1);
+			else
+				sparkle.addr = BANNER_SPARKLE(f);
+			spriteptr = update_banner(&sparkle, spriteptr);
 		}
 		spriteptr = update_scoreboard(&score, spriteptr);
 		spriteptr = update_scoreboard(&hiscore, spriteptr);
@@ -763,7 +828,20 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 		endframe(&spriteptr);
 	}
 	
-	// TODO: fade to black
+	// TODO: fade to black - yaaay!
+	colorstate.current	= PAL_NORMALB;
+	colorstate.end		= PAL_BLACK;
+	colorstate.active	= 1;
+	for(f = 0 ; f < 16 ; f++)
+	{
+		spriteptr = update_scoreboard(&score, spriteptr);
+		spriteptr = update_scoreboard(&hiscore, spriteptr);
+		spriteptr = update_banner(&banner, spriteptr);
+		spriteptr = update_banner(&modelabel, spriteptr);
+		spriteptr = update_banner(&report, spriteptr);
+		spriteptr = update_bird(bird, spriteptr);
+		endframe(&spriteptr);
+	}
 	// TODO: whoosh sound
 	
 }
@@ -802,13 +880,14 @@ void irq(void)
 }
 
 // TODO: move this data into a .BIN and vload() it directly to VERA
+/*
 static const uint8_t palette[128] =
 {
-  // background palette
+  // tile palette
   0xbc,0x06, 0x00,0x00, 0xff,0x0f, 0xf0,0x00, 0xc0,0x00, 0x80,0x00, 0xd4,0x0f, 0xe5,0x0e,
   0x81,0x0f, 0x45,0x0b, 0x78,0x0f, 0xfb,0x0f, 0xb4,0x0d, 0xf0,0x0f, 0xed,0x0f, 0x33,0x0f,
 
-  // tile palette
+  // background palette
   0xff,0x00, 0xfd,0x0e, 0xc7,0x07, 0xb7,0x06, 0xd7,0x07, 0xdc,0x09, 0xdb,0x0b, 0xdc,0x0b,
   0xdc,0x0c, 0xed,0x0e, 0xec,0x0d, 0x00,0x00, 0xb4,0x0d, 0x4f,0x0e, 0xff,0x0f, 0x33,0x0f,
   
@@ -820,13 +899,14 @@ static const uint8_t palette[128] =
   0x00,0x00, 0x22,0x03, 0xa6,0x0b, 0xc9,0x0d, 0xd9,0x0e, 0xda,0x0d, 0xa4,0x0d, 0x91,0x02, 
   0x90,0x0c, 0xb0,0x0f, 0xfa,0x0f, 0x60,0x09, 0x30,0x05, 0x0e,0x0f, 0xff,0x0f, 0x14,0x0e
 };
-
+*/
 
 static uint8_t spriteregs[_maxsprites][8] = { };
 static pipe_t pipe = { 0,0,0,0,0 };
 static uint16_t SystemIRQ = 0;
 static uint8_t frame = 0;
 
+/*
 // SFX sequence for the ding sound
 static const sfxframe ding[] = {
 	{0x28, 0x76, 0}, {0x08, YM_KeyUp, 0}, {0x08, YM_KeyDn, 1},
@@ -865,6 +945,55 @@ static const sfxframe darksouls[] = {
 	{0x08, YM_KeyUp, 0}, {0x28, 0x2e, 0}, {0x08, YM_KeyDn, 30},
 	{0x08, YM_KeyUp, 0}, {0, 0, 0xff}
 };
+*/
+
+// SFX sequence for the ding sound
+static const sfxframe ding[] = {
+	{0x28, 0x79, 0}, {0x08, YM_KeyUp, 0}, {0x08, YM_KeyDn, 1},
+	{0x08, YM_KeyUp, 7}, {0x28, 0x7e, 0}, {0x08, YM_KeyDn, 1},
+	{0x08, YM_KeyUp, 0x00}, {0,0,0xff}
+};
+
+static const sfxframe fall[] = {
+	{0x28, 0x5e, 0}, {0x08, YM_KeyUp, 0}, {0x08, YM_KeyDn, 4},
+	{0x30, 0x20, 0}, {0x28, 0x5d, 3}, {0x30, 0x00, 2}, {0x30, 0x20, 0},
+	{0x28, 0x5c, 2}, {0x30, 0x00, 2}, {0x30, 0x20, 0}, {0x28, 0x5a, 2},
+	{0x30, 0x00, 2}, {0x30, 0x20, 0}, {0x28, 0x59, 2}, {0x30, 0x00, 2},
+	{0x08, YM_KeyUp, 0},
+	{0x30, 0x20, 0}, {0x28, 0x58, 2}, {0x30, 0x00, 2}, {0x30, 0x20, 0},
+	{0x28, 0x56, 2}, {0x30, 0x00, 2}, {0x30, 0x20, 0}, {0x28, 0x55, 2},
+	{0x30, 0x00, 2}, {0x28, 0x54, 2}, {0x28, 0x52, 1}, {0x28, 0x51, 1},
+	{0x28, 0x50, 1},
+	{0,0,0xff}
+};
+
+static const sfxframe flap[] = {
+	{0x08, YM_KeyUp, 0}, {0x28, 0x24, 0}, {0x08, YM_KeyDn, 4},
+	{0x08, YM_KeyUp, 0}, {0,0,0xff}
+};
+
+static const sfxframe smack[] = {
+	{0x08, YM_KeyUp, 0}, { 0x0f, 0x81, 0 },
+	{0x28, 0x26, 0}, {0x08, YM_KeyDn, 3},
+	{0x08, YM_KeyUp, 0}, {0,0,0xff}
+};
+/*
+static const sfxframe smack[] = {
+	{0x08, YM_KeyUp, 0}, {0x28, 0x34, 0}, {0x08, YM_KeyDn, 1},
+	{0x28, 0x24, 1},{0x28, 0x34, 1},{0x28, 0x24, 1},
+	{0x28, 0x34, 1},{0x28, 0x24, 1},
+	{0x08, YM_KeyUp, 0}, {0,0,0xff}
+};
+*/
+
+static const sfxframe darksouls[] = {
+	{0x08, YM_KeyUp, 0}, {0x28, 0x30, 0}, {0x08, YM_KeyDn, 6},
+	{0x08, YM_KeyUp, 0}, {0x28, 0x31, 0}, {0x08, YM_KeyDn, 6},
+	{0x08, YM_KeyUp, 0}, {0x28, 0x32, 0}, {0x08, YM_KeyDn, 6},
+	{0x08, YM_KeyUp, 0}, {0x28, 0x31, 0}, {0x08, YM_KeyDn, 30},
+	{0x08, YM_KeyUp, 0}, {0, 0, 0xff}
+};
+
 
 // game difficulty parameters
 static const param_t params[5] = {
@@ -911,6 +1040,7 @@ void main()
 	clear_screen();
 
 	while (1) {
+			
 		difficulty = titlescreen(&bird, difficulty);
 		score = playgame(&bird);
 		gameover(&bird, score, hiscore[difficulty], difficulty);

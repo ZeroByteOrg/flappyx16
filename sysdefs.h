@@ -8,20 +8,13 @@
 #ifndef __SYSDEFS_H__
 #define __SYSDEFS_H__
 
-//#define R39
+#define R39
 //#define debug
 //#define profiling
 
 // Game Parameters
 #define _ceiling		-64
 #define _floor			(14 * 16 - 19) // row 14, 16px per tile, 19 for bird hitbox
-
-/*
-#define _gravity 4 // 7
-#define _birdflapthrust -64 // -77
-*/
-//#define _gravity 6 // 7
-//#define _birdflapthrust -90 // -77
 
 #define _birdstartx			72
 #define _birdstarty			120
@@ -87,6 +80,19 @@
 #define _maxsprites 64
 #define _fmvoices	8
 #define _psgvoices	16
+
+#define _rampbase	0xa000
+#define _rampbank	1
+#define _numpalettes	4
+#define _numcolors	(16 * _numpalettes) // 16 colors per palette
+#define RAMP_STEPS	9
+#define RAMP_SPEED	0
+#define RAMP_SIZE	128
+
+#define PAL_BLACK	8
+#define	PAL_RED		17
+#define PAL_NORMALB	0
+#define	PAL_NORMALR	9
 
 
 // pre-shifted versions of the resource locations in VRAM
