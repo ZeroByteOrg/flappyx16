@@ -107,7 +107,8 @@
 #define SETROMBANK		(*(uint8_t*) 0x01)
 #else
 #define YMBase			0x9fe0	// Base address of YM2151 FM synth
-#define JOYBASE			0xa031  // only 2 of the joysticks are valid
+#define JOYBASE			0xa02f  // only 2 of the joysticks are valid
+//#define JOYBASE			0xa031  // only 2 of the joysticks are valid
 #define SETRAMBANK		(*(uint8_t*) 0x9f61)
 #define SETROMBANK		(*(uint8_t*) 0x9f60)
 #endif
