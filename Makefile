@@ -3,7 +3,7 @@ includes	+=	scoreboard.h sound.h
 sources		=	flappy.c bird.c pipes.c input.c banner.c
 sources		+=	scoreboard.c sound.c
 resources	=	BIRD.BIN BACKGROUND.BIN TILES.BIN BANNERS.BIN
-resources	+=	REPORT.BIN DIFFICULTY.BIN
+resources	+=	REPORT.BIN DIFFICULTY.BIN RAMPS.BIN
 target		=	FLAPPY.PRG
 pkg			=	flappyx16.zip
 
