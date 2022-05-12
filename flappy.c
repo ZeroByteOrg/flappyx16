@@ -46,7 +46,7 @@ typedef struct pal_t {
 	uint16_t	c[_numcolors];
 } pal_t;
 
-	
+
 static const param_t params[5];
 static const pal_t* palettes[RAMP_STEPS];
 
@@ -74,7 +74,7 @@ static const sfxframe flap[];
 static const sfxframe smack[];
 static const sfxframe darksouls[];
 static const int16_t optionx[N_OPTIONS];
-static const int16_t optiony[N_OPTIONS];	
+static const int16_t optiony[N_OPTIONS];
 static const int16_t optionaddr[N_OPTIONS];
 
 
@@ -113,16 +113,16 @@ void vload(const char* filename, const uint8_t bank, const uint16_t address)
 void init_game()
 {
 	uint8_t i;
-	
+
 	// these are the patches for the YM SFX
 	#include "dingsound.inc" // will switch this to a load instead...
 	#include "fallsound.inc"
 	#include "flapsound.inc"
 	#include "smacksound.inc"
 	#include "darksoulsound.inc"
-	
+
 	// disable sprites and layers while we load graphics / init screen
-	VERA.display.video = 0x01; 
+	VERA.display.video = 0x01;
 
 	//undo mixed-case mode that cc65 sets by default
  	cbm_k_bsout(CH_FONT_UPPER);
@@ -144,18 +144,18 @@ void init_game()
 	colorstate.current = PAL_BLACK;
 	colorstate.end = PAL_NORMALB;
 	colorstate.active = 0;
-	
+
 	// set display to 320x240
 	VERA.display.hscale		= 64;
 	VERA.display.vscale		= 64;
-	
+
 	#ifdef profiling
 	// leave 2 pixels of border on the left side of the screen for profiling by changing border color
 	VERA.control |= 2;
 	VERA.display.hstart = 2;
 	VERA.control &= 255-2;
 	#endif
-	
+
 	VERA.layer0.config		= 0x06; // MapH&W=0,Bitmap=1,depth=2
 	VERA.layer0.hscroll		= 0x01<<8;    // sets palette offset in bitmap mode
 	VERA.layer0.tilebase	= ((_bgbase >> 9) & 0xfc) | 0x00;
@@ -177,13 +177,13 @@ void init_game()
 	patchYM((uint8_t*)&fallsound,2);
 	patchYM((uint8_t*)&flapsound,3);
 	patchYM((uint8_t*)&darksoulsound,4);
-	
+
 	// initialize the RNG
 	srand(VIA1.t1_lo);
-	
+
 	// install the IRQ handler
 	IRQvector = (uint16_t)&irq;
-	
+
 	// clear the keyboard buffer
 	while (kbhit()) { cgetc(); }
 	joynum = 0;
@@ -251,11 +251,11 @@ void update_screen(const int16_t scroll)
 	uint8_t  VH , VC;
 	uint16_t VL;
 	uint8_t r = 0;
-	
+
 	VC = VERA.control;
 	VH = VERA.address_hi;
 	VL = VERA.address;
-	
+
 	VERA.layer1.hscroll = scroll;
 
 	VERA.control	&= 0xfe;
@@ -324,7 +324,7 @@ void update_screen(const int16_t scroll)
 void update_sound()
 {
 	uint8_t i;
-	
+
 	for (i=0 ; i < _fmvoices ; i++)
 	{
 		if (fmvoice[i].delay != 0xff)
@@ -337,22 +337,22 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 	#define pogospeed 2
 	#define maxy 16
 	#define miny -3
-	
+
 	#define BIRDXOFFSET 190
 	#define BIRDYOFFSET 21
 
 	banner_t banner;
 	banner_t options[N_OPTIONS];
 	banner_t opnums[N_OPTIONS];
-	
+
 	uint8_t i,f;
-	
+
 	#ifdef debug
 	scoreboard_t db[4];
 	uint8_t	d;
 	joy_t *joystick = ((joy_t*)JOYBASE);
 	#endif
-	
+
 	uint8_t *spriteptr; // current sprite pointer
 
 	int16_t target[2] = { miny, maxy };
@@ -373,7 +373,7 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 	banner.y = _bannery;
 	banner.speed = 1;
 	banner.target = target[t];
-	
+
 	for (i = 0 ; i < N_OPTIONS ; i++) {
 		init_banner(&options[i], BANNER_OPTION(i), _banneroptionspec, BANNER_1x2);
 		options[i].x = optionx[i];
@@ -397,10 +397,10 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 		options[5].y = 240;
 	}
 	#ifdef debug
-	init_scoreboard(&db[0],0,10,SB_left,SB_hex); 
-	init_scoreboard(&db[1],0,30,SB_left,SB_hex); 
-	init_scoreboard(&db[2],0,50,SB_left,SB_hex); 
-	init_scoreboard(&db[3],0,70,SB_left,SB_hex); 
+	init_scoreboard(&db[0],0,10,SB_left,SB_hex);
+	init_scoreboard(&db[1],0,30,SB_left,SB_hex);
+	init_scoreboard(&db[2],0,50,SB_left,SB_hex);
+	init_scoreboard(&db[3],0,70,SB_left,SB_hex);
 	#endif
 	ctrlstate.pressed	= 0;
 	ctrlstate.current	= 0;
@@ -408,7 +408,7 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 	ctrlstate.released	= 0;
 	for (i=0 ; i<16 ; i++)
 	{
-		endframe(spriteptr);
+		endframe(&spriteptr);
 	}
 	colorstate.current	= PAL_BLACK;
 	colorstate.end		= PAL_NORMALB;
@@ -446,7 +446,7 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 		for (i = 0 ; i < N_OPTIONS ; i++)
 		{
 			spriteptr = update_banner(&options[i], spriteptr);
-			if ((i-1 != difficulty)||(f & 16)) 
+			if ((i-1 != difficulty)||(f & 16))
 			{
 				if ((i != 5)||(difficulty == 4))
 					spriteptr = update_banner(&opnums[i], spriteptr);
@@ -580,9 +580,9 @@ uint16_t playgame(bird_t* bird)
 	spriteptr = &spriteregs[0][0];
 	init_scoreboard(&score,320/2,4,SB_center,SB_decimal);
 #ifdef debug
-	init_scoreboard(&dbout[0],0,10,SB_left,SB_hex); 
-	init_scoreboard(&dbout[1],0,30,SB_left,SB_hex); 
-	init_scoreboard(&dbout[2],0,50,SB_left,SB_hex); 
+	init_scoreboard(&dbout[0],0,10,SB_left,SB_hex);
+	init_scoreboard(&dbout[1],0,30,SB_left,SB_hex);
+	init_scoreboard(&dbout[2],0,50,SB_left,SB_hex);
 #endif
 	init_bird(bird, _birdstartx, _birdstarty);
 	init_banner(&banner,BANNER_GETREADY,_bannertitlespec,BANNER_1x3);
@@ -594,7 +594,7 @@ uint16_t playgame(bird_t* bird)
 	while (kbhit()) { cgetc(); }
 	endframe(&spriteptr);
 	crashy = _floor;
-	
+
 	while (1) {
 //		if (kbhit()) {cgetc(); ctrlstate.pressed=1; }
 		// update game state
@@ -685,8 +685,8 @@ uint16_t playgame(bird_t* bird)
 				bird->y++;
 			if (ctrlstate.current & 8 || ctrlstate.pressed & 0x4000)
 				bird->y--;
-		}		
-		
+		}
+
 		#ifdef testbird
 		if ((!--i) && autopilot)
 		{
@@ -722,13 +722,13 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 	uint8_t			f = 0;
 	uint8_t			done = 0;
 	uint8_t			pikapika = 0;
-	
+
 	set_medalcolor(0, p_hiscore); // hide the medal until the score is tallied
 	init_scoreboard(&score, _bannerx + _hiscoreoffsetx, _hiscoreoffsety, SB_right, SB_decimal);
 	init_scoreboard(&hiscore, _bannerx + _hiscoreoffsetx, _hiscoreoffsety + _hiscorespacing, SB_right, SB_decimal);
 	score.score   = 0;
 	hiscore.score = p_hiscore;
-	
+
 	init_banner(&banner,BANNER_GAMEOVER,_bannertitlespec,BANNER_1x3);
 	banner.x = _bannerx;
 	banner.y = _bannery;
@@ -741,16 +741,16 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 	report.speed  = 0;	// due to sprite priority issues, it is not
 						// beneficial to use the auto-move feature
 						// of the banner type for this object
-	
+
 	init_banner(&modelabel, BANNER_OPTION(p_difficulty+1), _banneroptionspec, BANNER_1x2);
 	modelabel.x = _bannerx + _modeoffsetx;
 	modelabel.target=_reporty + _modeoffsety;
 	modelabel.speed = 0;
-	
+
 	init_banner(&sparkle, BANNER_SPARKLE(0), _bannersparklespec, BANNER_1x1);
 	sparkle.x = -16;
 	sparkle.y = -16;
-	
+
 	spriteptr = (uint8_t*)spriteregs;
 	ctrlstate.released = 0;
 	ctrlstate.pressed  = 0;
@@ -827,7 +827,7 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 		spriteptr = update_bird(bird, spriteptr);
 		endframe(&spriteptr);
 	}
-	
+
 	// TODO: fade to black - yaaay!
 	colorstate.current	= PAL_NORMALB;
 	colorstate.end		= PAL_BLACK;
@@ -843,7 +843,7 @@ void gameover(bird_t *bird, uint16_t p_score, uint16_t p_hiscore, uint8_t p_diff
 		endframe(&spriteptr);
 	}
 	// TODO: whoosh sound
-	
+
 }
 
 void endframe(uint8_t **spriteptr)
@@ -890,13 +890,13 @@ static const uint8_t palette[128] =
   // background palette
   0xff,0x00, 0xfd,0x0e, 0xc7,0x07, 0xb7,0x06, 0xd7,0x07, 0xdc,0x09, 0xdb,0x0b, 0xdc,0x0b,
   0xdc,0x0c, 0xed,0x0e, 0xec,0x0d, 0x00,0x00, 0xb4,0x0d, 0x4f,0x0e, 0xff,0x0f, 0x33,0x0f,
-  
+
   // banner palette
   0x00,0x00, 0xbc,0x06, 0xed,0x0b, 0x11,0x01, 0xa6,0x0b, 0xd8,0x0d, 0xfa,0x0f, 0xc3,0x07,
   0x83,0x05, 0xf8,0x0b, 0x91,0x0d, 0xa0,0x0f, 0xda,0x0e, 0x0e,0x0f, 0xff,0x0f, 0x14,0x0e,
-  
+
   // report card palette (gets manipulated)
-  0x00,0x00, 0x22,0x03, 0xa6,0x0b, 0xc9,0x0d, 0xd9,0x0e, 0xda,0x0d, 0xa4,0x0d, 0x91,0x02, 
+  0x00,0x00, 0x22,0x03, 0xa6,0x0b, 0xc9,0x0d, 0xd9,0x0e, 0xda,0x0d, 0xa4,0x0d, 0x91,0x02,
   0x90,0x0c, 0xb0,0x0f, 0xfa,0x0f, 0x60,0x09, 0x30,0x05, 0x0e,0x0f, 0xff,0x0f, 0x14,0x0e
 };
 */
@@ -1006,12 +1006,12 @@ static const param_t params[5] = {
 };
 
 // x coordinates for the menu option items
-static const int16_t optionx[N_OPTIONS] = { 
+static const int16_t optionx[N_OPTIONS] = {
 	96, 130, 130, 130, 130, 130
 };
 
 // y coordinates for the menu option items
-static const int16_t optiony[N_OPTIONS] = { 
+static const int16_t optiony[N_OPTIONS] = {
 	100, 120, 140, 160, 180, 200
 };
 
@@ -1040,7 +1040,7 @@ void main()
 	clear_screen();
 
 	while (1) {
-			
+
 		difficulty = titlescreen(&bird, difficulty);
 		score = playgame(&bird);
 		gameover(&bird, score, hiscore[difficulty], difficulty);
@@ -1061,6 +1061,3 @@ void main()
 	// or....
 	// call coldstart vector at $FFFC
 }
-
-
-
