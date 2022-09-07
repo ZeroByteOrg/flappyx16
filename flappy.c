@@ -89,7 +89,7 @@ void load_vera(const unsigned long address, const uint8_t *data, uint16_t size)
 
   for ( i=0 ; i < size ; i++  )
   {
-    VERA.data0 = data[i];
+	VERA.data0 = data[i];
   }
 }
 
@@ -186,7 +186,7 @@ void init_game()
 
 	// clear the keyboard buffer
 	while (kbhit()) { cgetc(); }
-	joynum = 0;
+	joynum = 1;
 	ctrlstate.enabled = 1;
 }
 
@@ -357,9 +357,9 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 
 	int16_t target[2] = { miny, maxy };
 	uint8_t	t = 0;
-    uint8_t delay	= pogospeed;
-    uint8_t noinput = 16; // ignore input for this many frames
-    uint8_t darksoulcounter = 0;
+	uint8_t delay	= pogospeed;
+	uint8_t noinput = 16; // ignore input for this many frames
+	uint8_t darksoulcounter = 0;
 
 	// keep previous difficulty, or initialize to 1 the first time
 	if (difficulty >= 5)
@@ -553,6 +553,29 @@ uint8_t titlescreen(bird_t* bird, uint8_t difficulty)
 	return(difficulty);
 }
 
+uint8_t* debug_joy(uint8_t* spriteptr)
+{
+	joy_t *joystick = ((joy_t*)JOYBASE);
+	scoreboard_t dbg_sb = { 0, 32, 48, 0, 1 };
+	unsigned char bank = RAM_BANK;
+	RAM_BANK = 0;
+
+	dbg_sb.score = joystick[1].state;
+	spriteptr = update_scoreboard(&dbg_sb, spriteptr);
+
+	dbg_sb.y += 16;
+	dbg_sb.score = joystick[1].detected;
+	spriteptr = update_scoreboard(&dbg_sb, spriteptr);
+
+	dbg_sb.y += 16;
+	dbg_sb.score = ctrlstate.current;
+	spriteptr = update_scoreboard(&dbg_sb, spriteptr);
+
+	RAM_BANK = bank;
+	return spriteptr;
+}
+
+
 uint16_t playgame(bird_t* bird)
 {
 	//#define profiling
@@ -608,6 +631,7 @@ uint16_t playgame(bird_t* bird)
 			spriteptr = update_scoreboard(&dbout[d], spriteptr);
 		}
 #endif
+		// spriteptr = debug_joy(spriteptr);
 		if (banner.y != banner.target)
 		{
 			// if "Get Ready" banner visible....

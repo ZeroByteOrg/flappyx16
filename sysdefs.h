@@ -102,7 +102,7 @@
 
 #ifdef R39
 #define YMBase			0x9f40	// Base address of YM2151 FM synth
-#define JOYBASE			0xa02c
+#define JOYBASE			0xa81d
 #define SETRAMBANK		(*(uint8_t*) 0x00)
 #define SETROMBANK		(*(uint8_t*) 0x01)
 #else

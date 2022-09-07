@@ -5,7 +5,7 @@
 #include "sysdefs.h"
 
 controller_t ctrlstate;
-uint8_t joynum = 0;
+uint8_t joynum = 1;
 
 /*
 void check_input()
@@ -56,11 +56,11 @@ void check_input()
 	if (ctrlstate.enabled) {
 		ctrlstate.last = ctrlstate.current;
 		SETRAMBANK = 0;
-		if ((joystick+joynum)->detected == 0)
+		if (joystick[joynum].detected == 0)
 		{
 			// mask the 4LSB of the high byte (joystick type bits)
 			// flip the logic of the joystick bits so 1=pressed
-			ctrlstate.current = (joystick+joynum)->state & 0xf0ff ^ 0xf0ff;
+			ctrlstate.current = ~joystick[joynum].state;
 		}
 		else {
 			ctrlstate.current = 0;
