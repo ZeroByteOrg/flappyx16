@@ -122,7 +122,7 @@ void init_game()
 	#include "darksoulsound.inc"
 
 	// disable sprites and layers while we load graphics / init screen
-	VERA.display.video = 0x01;
+	VERA.display.video &= 0x07;
 
 	//undo mixed-case mode that cc65 sets by default
  	cbm_k_bsout(CH_FONT_UPPER);
@@ -169,7 +169,7 @@ void init_game()
 
 	clear_sprites();
 	// enable sprites and both layers for display
-	VERA.display.video		= 0x71;
+	VERA.display.video		|= 0x70;
 
 	clear_YM(&fmvoice);
 	patchYM((uint8_t*)&dingsound,0);
